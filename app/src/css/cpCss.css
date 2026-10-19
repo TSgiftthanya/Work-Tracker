@@ -1,0 +1,68 @@
+#commplan .cp-sum{display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 14px}.cp-chip{background:#f4f8ff;border:1px solid #e2ebf6;border-radius:10px;padding:8px 14px;min-width:92px}.cp-chip b{display:block;font-size:20px;line-height:1.15;color:#13233a}.cp-chip span{font-size:11px;color:#64748b}.cp-inp{padding:6px 9px;border:1px solid #d7e0ea;border-radius:8px;font-size:13px}.cp-tag{display:inline-block;background:#eef2f7;color:#334155;border-radius:6px;padding:2px 7px;font-size:11px;margin:1px 0;white-space:nowrap}.cp-tag-sms{background:#fde9cf;color:#9a5b16}.cp-wk{background:#e8f0fe;color:#1766cc;font-weight:600}.cp-table-wrap{overflow:auto;max-height:640px;border-radius:10px}#cpTable th,#cpSmsTable th{position:sticky;top:0;background:#f8faf8;z-index:2}#cpTable,#cpSmsTable{min-width:940px}.cp-grp td{background:#eef4fb;font-weight:700;color:#1a4f8f;font-size:12px}.cp-mini{padding:3px 8px;font-size:12px;border-radius:7px}.cp-mini.danger{color:#c0392b}.cp-ops{white-space:nowrap}.cp-remark{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#475569;font-size:12px}#commplan .table td{vertical-align:top}.cp-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.cp-ck{display:inline-flex;align-items:center;gap:6px;font-size:13px;cursor:pointer}
+
+/* ===== Step 1: table layout / spacing / date-group header / More-Actions ===== */
+#cpTable,#cpSmsTable{table-layout:fixed;border-collapse:separate;border-spacing:0}
+/* column widths (via <colgroup>) */
+#cpTable .cp-c-day{width:52px}#cpTable .cp-c-date{width:98px}#cpTable .cp-c-topic{width:auto}#cpTable .cp-c-time{width:58px}#cpTable .cp-c-ch{width:150px}#cpTable .cp-c-md{width:140px}#cpTable .cp-c-st{width:120px}#cpTable .cp-c-remark{width:170px}#cpTable .cp-c-task{width:94px}#cpTable .cp-c-ops{width:52px}
+#cpSmsTable .cp-c-date{width:98px}#cpSmsTable .cp-c-time{width:58px}#cpSmsTable .cp-c-topic{width:auto}#cpSmsTable .cp-c-smsmsg{width:230px}#cpSmsTable .cp-c-target{width:120px}#cpSmsTable .cp-c-owner{width:96px}#cpSmsTable .cp-c-st{width:120px}#cpSmsTable .cp-c-remark{width:150px}#cpSmsTable .cp-c-ops{width:52px}
+
+/* header + row spacing */
+#cpTable thead th,#cpSmsTable thead th{padding:10px 12px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.02em;text-align:left;border-bottom:2px solid #e3ebf5;background:#f8fafc}
+#cpTable tbody td,#cpSmsTable tbody td{padding:11px 12px;vertical-align:middle;border-bottom:1px solid #eef2f7;font-size:13px;line-height:1.5}
+#cpTable tbody tr:hover td,#cpSmsTable tbody tr:hover td{background:#f6f9fe}
+
+/* topic wraps, tags wrap; remark stays single-line ellipsis */
+#cpTable tbody td:nth-child(3),#cpSmsTable tbody td:nth-child(3){white-space:normal;word-break:break-word}
+#cpTable tbody td:nth-child(5),#cpTable tbody td:nth-child(6){white-space:normal}
+.cp-remark{max-width:0}
+
+/* date-group header: date left, count chip right */
+#cpTable .cp-grp td,#cpSmsTable .cp-grp td{padding:8px 12px;background:#eef4fc;border-top:1px solid #d9e6f8;border-bottom:1px solid #d9e6f8;color:#1f3a5f}
+#cpTable tbody tr.cp-grp:hover td,#cpSmsTable tbody tr.cp-grp:hover td{background:#eef4fc}
+.cp-grp-in{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.cp-grp-date{font-weight:700;color:#1f3a5f;font-size:12.5px}
+.cp-grp-count{flex:none;background:#dbe9fb;color:#395f8f;font-size:11px;font-weight:600;padding:2px 10px;border-radius:999px}
+
+/* More-Actions kebab menu (menu is position:fixed so the overflow wrapper can't clip it) */
+.cp-ops{text-align:center}
+.cp-actions{position:relative;display:inline-block}
+.cp-kebab{padding:2px 9px;font-size:17px;line-height:1;border-radius:8px;color:#64748b}
+.cp-kebab:hover,.cp-kebab.open{background:#eef4fc;color:#1766cc}
+.cp-menu{position:fixed;z-index:1000;min-width:138px;background:#fff;border:1px solid #d5e2f2;border-radius:10px;box-shadow:0 12px 30px rgba(20,40,80,.18);padding:5px}
+.cp-menu .cp-mi{display:flex;align-items:center;gap:8px;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:8px 10px;font-size:13px;color:#334155;cursor:pointer;white-space:nowrap}
+.cp-menu .cp-mi:hover{background:#eef4fc}
+.cp-menu .cp-mi.danger{color:#c0392b}
+.cp-menu .cp-mi.danger:hover{background:#fdecea}
+
+@media(max-width:860px){#cpTable thead th,#cpSmsTable thead th,#cpTable tbody td,#cpSmsTable tbody td{padding:9px 8px;font-size:12px}}
+
+/* ===== Step 2: Summary Dashboard — Completion Rate, status note, Channel/Media breakdown ===== */
+.cp-chip-rate{background:#eaf6ef;border-color:#cfe9db}
+.cp-chip-rate b{color:#1f8a4c}
+.cp-stnote{margin:-6px 0 14px;line-height:1.6}
+.cp-stnote .cp-od{color:#c0392b;font-weight:700}
+.cp-break{margin:-2px 0 14px}
+.cp-bk-head{display:flex;align-items:center;gap:7px;width:100%;text-align:left;background:#f6f9fe;border:1px solid #e2ebf6;border-radius:10px;padding:9px 13px;font-size:13px;font-weight:600;color:#334155;cursor:pointer}
+.cp-bk-head:hover{background:#eef4fc}
+.cp-bk-head #cpBkCaret{color:#1766cc;font-size:12px}
+.cp-bk-body{border:1px solid #eef2f7;border-top:0;border-radius:0 0 10px 10px;padding:12px 14px;margin-top:-2px}
+.cp-bk-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px 26px}
+.cp-bk-sub{grid-column:1/-1;font-size:11px;font-weight:700;color:#64748b;margin:2px 0 1px}
+.cp-bk-cols .cp-bk-sub:nth-of-type(2){margin-top:8px}
+.cp-bk-row{display:flex;align-items:center;gap:10px;width:100%;background:none;border:0;border-radius:8px;padding:5px 8px;cursor:pointer;font-size:13px;color:#334155}
+.cp-bk-row:hover{background:#f1f6fd}
+.cp-bk-lb{flex:none;width:96px;text-align:left}
+.cp-bk-bar{flex:1;height:9px;background:#eef2f7;border-radius:999px;overflow:hidden}
+.cp-bk-bar i{display:block;height:100%;border-radius:999px}
+.cp-bk-n{flex:none;width:34px;text-align:right;font-weight:700}
+.cp-bk-pc{flex:none;width:40px;text-align:right;color:#64748b;font-size:12px}
+.cp-bk-note{font-size:11px;color:#64748b;margin-top:10px;line-height:1.55;border-top:1px dashed #e3ebf5;padding-top:8px}
+@media(max-width:700px){.cp-bk-cols{grid-template-columns:1fr}}
+
+/* per-channel tag colours (distinct hues) */
+.cp-tag-line{background:#e3f4e8;color:#1f8a4c}
+.cp-tag-tophit{background:#e8f0fe;color:#1766cc}
+.cp-tag-banner{background:#efe8fb;color:#6b3fb0}
+.cp-tag-sms{background:#fde9cf;color:#9a5b16}
+.cp-tag-appstaff{background:#d8f0f2;color:#0e7b86}
+.cp-tag-lastmile{background:#fce3ef;color:#b0356f}

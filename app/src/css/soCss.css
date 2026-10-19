@@ -1,0 +1,23 @@
+/* Special Order Plan page */
+#soTable{table-layout:fixed;border-collapse:separate;border-spacing:0;min-width:1040px}
+#soTable .so-c-ad{width:104px}#soTable .so-c-doc{width:150px}#soTable .so-c-req{width:auto}#soTable .so-c-pur{width:140px}#soTable .so-c-sku{width:54px}#soTable .so-c-qty{width:58px}#soTable .so-c-br{width:70px}#soTable .so-c-rd{width:100px}#soTable .so-c-dept{width:120px}#soTable .so-c-st{width:120px}#soTable .so-c-ops{width:52px}
+#soTable thead th{position:sticky;top:0;z-index:2;padding:10px 12px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.02em;text-align:left;border-bottom:2px solid #e3ebf5;background:#f8fafc}
+#soTable tbody td{padding:11px 12px;vertical-align:middle;border-bottom:1px solid #eef2f7;font-size:13px;line-height:1.5}
+#soTable tbody tr:hover td{background:#f6f9fe}
+#soTable tbody td:nth-child(3),#soTable tbody td:nth-child(4){white-space:normal;word-break:break-word}
+#soTable .so-doc{font-size:12px;color:#475569;word-break:break-all}
+#soTable .cp-grp td{padding:8px 12px;background:#eef4fc;border-top:1px solid #d9e6f8;border-bottom:1px solid #d9e6f8;color:#1f3a5f}
+#soTable tbody tr.cp-grp:hover td{background:#eef4fc}
+/* status pills */
+.so-st-done{background:#e4f5ea;color:#1f8a4c}
+.so-st-prog{background:#e8f0fe;color:#1766cc}
+.so-st-other{background:#eef2f7;color:#5b6b80}
+.wz-err{color:#c0392b}
+/* add/edit form grid */
+#soForm{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px}
+#soForm .so-fld{display:flex;flex-direction:column;gap:3px}
+#soForm .so-fld.wide{grid-column:1/-1}
+#soForm label{font-size:12px;color:#475569;font-weight:600}
+#soForm input,#soForm textarea{width:100%;padding:7px 10px;border:1px solid #d7e0ea;border-radius:8px;font-size:13px}
+#soForm textarea{min-height:56px;resize:vertical}
+@media(max-width:700px){#soForm{grid-template-columns:1fr}}

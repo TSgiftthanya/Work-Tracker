@@ -1,0 +1,69 @@
+<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>เข้าสู่ระบบ · Work Tracker</title><style>
+@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
+:root{--ink:#13233a;--muted:#7a889c;--blue:#1766cc;--blue2:#0f4fa6;--line:#e3ebf4;--bg:#eef4fc}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;font-family:Prompt,system-ui,sans-serif;color:var(--ink);
+ background:radial-gradient(1200px 700px at 20% -10%,#1f63cc22,transparent),linear-gradient(135deg,#0e2547,#123f8f);
+ display:flex;align-items:center;justify-content:center;padding:22px}
+.card{background:#fff;border-radius:20px;width:min(410px,100%);padding:34px 30px;box-shadow:0 30px 70px #0a1f4055}
+.brand{font-size:27px;font-weight:700;letter-spacing:-1px;color:var(--ink)}
+.brand span{color:var(--blue)}
+.brand small{display:block;font-size:10px;font-weight:400;letter-spacing:1.6px;color:var(--muted);margin-top:-2px}
+h1{font-size:19px;margin:26px 0 3px}
+.sub{color:var(--muted);font-size:12px;margin-bottom:20px}
+label{display:block;font-size:11px;color:#5a6b86;margin:14px 0 6px;font-weight:500}
+input{width:100%;padding:12px 13px;border:1px solid #d8e3f0;border-radius:11px;font:inherit;color:var(--ink);background:#fbfdff}
+input:focus{outline:none;border-color:var(--blue);background:#fff}
+.btn{width:100%;margin-top:22px;background:var(--blue);color:#fff;border:0;border-radius:11px;padding:13px;font:inherit;font-weight:600;cursor:pointer}
+.btn:hover{background:var(--blue2)}
+.btn:disabled{opacity:.6;cursor:default}
+.err{background:#ffeae9;color:#be5954;border:1px solid #ffd4d1;border-radius:10px;padding:11px 12px;font-size:12px;margin-top:16px;display:none}
+.err.show{display:block}
+.demo{background:#eef4fc;border:1px solid #dbe8fb;border-radius:10px;padding:11px;font-size:11px;color:#35548c;margin-top:14px;line-height:1.8;display:none}
+.demo.show{display:block}
+.status{font-size:11px;color:var(--muted);margin-top:14px}
+code{background:#eef4fc;padding:1px 6px;border-radius:5px;color:#0f4fa6}
+</style></head><body>
+<div class="card">
+  <div class="brand">Work <span>Tracker.</span><small>ติดตาม · คำนวณ · ตัดสินใจ</small></div>
+  <h1>เข้าสู่ระบบ</h1>
+  <div class="sub">ตรวจสิทธิ์จากรายชื่อทีมที่นำเข้าจาก Google Sheet</div>
+  <form id="form">
+    <label for="name">ชื่อผู้ใช้</label>
+    <input id="name" autocomplete="username" placeholder="ชื่อตามตารางสิทธิ์ทีม" required>
+    <label for="code">รหัสเข้าสู่ระบบ</label>
+    <input id="code" type="password" autocomplete="current-password" placeholder="รหัสของคุณ" required>
+    <button class="btn" id="submit" type="submit">เข้าสู่ระบบ</button>
+    <div class="err" id="err"></div>
+  </form>
+  <div class="demo" id="demo"></div>
+  <div class="status" id="status"></div>
+</div>
+<script>
+var $=function(s){return document.getElementById(s);};
+function showErr(m){var e=$('err');e.style.background='';e.style.color='';e.style.borderColor='';e.textContent=m;e.classList.add('show');}
+function clearErr(){$('err').classList.remove('show');}
+$('form').onsubmit=function(ev){
+  ev.preventDefault();clearErr();
+  var btn=$('submit');btn.disabled=true;btn.textContent='กำลังตรวจสอบ...';
+  fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:$('name').value,code:$('code').value})})
+   .then(function(r){return r.json().then(function(d){return{ok:r.ok,d:d};});})
+   .then(function(res){
+     if(res.ok&&res.d.ok){location.href='/';}
+     else{btn.disabled=false;btn.textContent='เข้าสู่ระบบ';showErr(res.d.error||'เข้าสู่ระบบไม่สำเร็จ');}
+   }).catch(function(){btn.disabled=false;btn.textContent='เข้าสู่ระบบ';showErr('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้');});
+};
+function loadMeta(){
+  fetch('/api/meta').then(function(r){return r.json();}).then(function(d){
+    $('status').textContent='ผู้ใช้ในระบบ: '+d.count+' คน · แหล่งข้อมูล: '+(d.source==='sheet'?'Google Sheet':'ผู้ใช้ตัวอย่าง (ยังไม่เชื่อมชีต)');
+    var demo=$('demo');
+    if(d.source==='demo'&&d.demo_users){
+      demo.classList.add('show');
+      demo.innerHTML='<b>โหมดตัวอย่าง — ยังไม่เชื่อม Google Sheet</b><br>ลองเข้าด้วยรหัสตัวอย่าง:<br>'+
+        d.demo_users.map(function(u){return '• '+u.name+' · <code>'+u.code+'</code> ('+u.role+')';}).join('<br>');
+    } else { demo.classList.remove('show'); }
+  }).catch(function(){});
+}
+loadMeta();
+</script>
+</body></html>

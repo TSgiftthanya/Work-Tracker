@@ -1,0 +1,17 @@
+# ── Sensitive runtime data — NEVER commit (secrets, passwords, live data) ──
+data/
+*.log
+*.err.log
+
+# Dev backups / historical artifacts
+app/_dev/
+
+# Python / OS
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
+
+# Local env
+.env
+.env.local

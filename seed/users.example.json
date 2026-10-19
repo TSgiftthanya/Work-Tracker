@@ -1,0 +1,5 @@
+[
+  { "name": "admin",   "code": "CHANGE_ME", "team": "UAT", "role": "Manager" },
+  { "name": "tester1", "code": "CHANGE_ME", "team": "UAT", "role": "Member"  },
+  { "name": "tester2", "code": "CHANGE_ME", "team": "UAT", "role": "Member"  }
+]

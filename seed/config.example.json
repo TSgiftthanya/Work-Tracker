@@ -1,0 +1,10 @@
+{
+  "_comment": "Example only. The real config.json is auto-generated on first run on the server's persistent disk and is git-ignored. Never commit a real 'secret' or 'line_token'.",
+  "secret": "",
+  "users_source": "demo",
+  "users_csv_url": "",
+  "line_token": "",
+  "line_manager_id": "",
+  "line_group_id": "",
+  "line_auto": false
+}

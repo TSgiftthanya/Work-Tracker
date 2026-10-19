@@ -1,0 +1,21 @@
+# Render Blueprint — Work Tracker UAT
+# Note: a persistent disk + always-on require a PAID plan (starter). The free plan
+# sleeps after 15 min and has NO persistent disk (data would be lost on restart).
+services:
+  - type: web
+    name: worktracker-uat
+    runtime: docker
+    plan: starter            # always-on + supports persistent disk (~$7/mo)
+    region: singapore        # closest to Thailand
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /login
+    autoDeploy: true         # redeploy on every push to the connected branch
+    disk:
+      name: wt-data
+      mountPath: /var/data   # matches WT_DATA_DIR
+      sizeGB: 1
+    envVars:
+      - key: WT_DATA_DIR
+        value: /var/data
+      - key: WT_HOST
+        value: 0.0.0.0

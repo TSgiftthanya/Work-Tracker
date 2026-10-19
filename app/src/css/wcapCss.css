@@ -1,0 +1,18 @@
+.wc-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:4px 0 16px}
+.wc-kpi{border:1px solid #e2ebf6;background:#f8fbff;border-radius:12px;padding:12px 14px}
+.wc-kpi .wl{font-size:11px;color:#64748b}.wc-kpi .wv{font-size:22px;font-weight:800;color:#13233a;line-height:1.1;margin-top:2px}.wc-kpi .ws{font-size:11px;color:#94a3b8}
+.wc-2col{display:grid;grid-template-columns:1fr 1fr;gap:14px}@media(max-width:860px){.wc-2col{grid-template-columns:1fr}}
+.table.wc-t{font-size:13px}.table.wc-t th{background:#f3f6fb;font-size:12px}.table.wc-t input{width:70px;padding:3px 6px;border:1px solid #d7e0ea;border-radius:6px;font-size:12px}
+.wc-sub{font-size:12px;color:#64748b;font-weight:400}.wc-h4{margin:16px 0 6px;font-size:13px;color:#1766cc}
+.wc-na{color:#94a3b8;font-size:12px}.pill.wc-ok{background:#e8f4ec;color:#2e7d4f}.pill.wc-bl{background:#e8f0fe;color:#1766cc}.pill.wc-hi{background:#fdf3e5;color:#9a6b16}.pill.wc-ov{background:#fdecea;color:#c0392b}.pill.wc-na2{background:#eef2f7;color:#64748b}
+.wc-prog{display:inline-block;width:80px;height:7px;background:#eef2f7;border-radius:6px;overflow:hidden;vertical-align:middle}.wc-prog>div{height:100%}.wc-pu{font-size:11px;color:#475569}
+.wc-legend{font-size:11px;color:#94a3b8;margin-top:8px}.wc-form{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.wc-form label{font-size:12px;color:#475569;display:flex;flex-direction:column;gap:3px}.wc-form input{padding:5px 8px;border:1px solid #d7e0ea;border-radius:7px}
+.wc-tab{padding:7px 14px}
+/* month multi-select filter */
+.wc-msel{position:relative;cursor:pointer;display:inline-flex;align-items:center;gap:8px;justify-content:space-between;min-width:128px}
+.wc-msel .wc-msel-car{color:#94a3b8;font-size:11px}
+.wc-msel-pop{position:absolute;top:calc(100% + 5px);left:0;z-index:50;background:#fff;border:1px solid #d5e2f2;border-radius:10px;box-shadow:0 10px 28px rgba(20,40,80,.16);padding:6px;min-width:170px;max-height:280px;overflow:auto}
+.wc-msel-opt{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:7px;font-size:13px;color:#334155;cursor:pointer;white-space:nowrap}
+.wc-msel-opt:hover{background:#eef4fc}
+.wc-msel-opt input{margin:0;cursor:pointer}
+.wc-msel-sep{border-top:1px solid #eef2f7;margin:4px 2px}
