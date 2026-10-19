@@ -23,8 +23,11 @@ seeded and a signing `secret` is auto-generated in `data/config.json`.
 
 ## Deploy to Render (UAT)
 
-The app writes to disk, so it needs an **always-on instance with a persistent disk**
-(Render **starter** plan — the free plan sleeps and has no disk).
+`render.yaml` is currently set to the **free** plan for a quick trial.
+⚠️ Free = **ephemeral data** (resets on restart/redeploy and after 15-min idle sleep)
+and cold starts. Use it to confirm the app runs online; for real UAT that keeps data,
+switch to the **starter** plan and add a persistent disk (see the comments in
+`render.yaml`: set `plan: starter`, add the `disk:` block, set `WT_DATA_DIR=/var/data`).
 
 1. Push this repo to a **private** GitHub repository (see below).
 2. Render → **New → Blueprint** → connect the repo → Render reads `render.yaml`

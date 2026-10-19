@@ -1,21 +1,28 @@
 # Render Blueprint — Work Tracker UAT
-# Note: a persistent disk + always-on require a PAID plan (starter). The free plan
-# sleeps after 15 min and has NO persistent disk (data would be lost on restart).
+#
+# CURRENT: FREE tier (quick trial). ⚠️ No persistent disk → data is EPHEMERAL:
+#   it resets on every restart/redeploy and after the service sleeps (15 min idle).
+#   Good for verifying the app runs online (UI/functions/login), NOT for keeping data.
+#
+# TO MAKE DATA PERSISTENT (recommended for real UAT): switch to the paid plan —
+#   set `plan: starter`, add the `disk:` block below (mountPath /var/data, sizeGB 1),
+#   and change WT_DATA_DIR to /var/data.
+#
+#   disk:
+#     name: wt-data
+#     mountPath: /var/data
+#     sizeGB: 1
 services:
   - type: web
     name: worktracker-uat
     runtime: docker
-    plan: starter            # always-on + supports persistent disk (~$7/mo)
-    region: singapore        # closest to Thailand
+    plan: free               # ⚠️ ephemeral; sleeps after 15 min idle
+    region: singapore
     dockerfilePath: ./Dockerfile
     healthCheckPath: /login
     autoDeploy: true         # redeploy on every push to the connected branch
-    disk:
-      name: wt-data
-      mountPath: /var/data   # matches WT_DATA_DIR
-      sizeGB: 1
     envVars:
       - key: WT_DATA_DIR
-        value: /var/data
+        value: /app/data     # ephemeral on free (use /var/data + disk on paid)
       - key: WT_HOST
         value: 0.0.0.0
