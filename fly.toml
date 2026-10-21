@@ -1,0 +1,27 @@
+# Fly.io config — Work Tracker UAT
+# App name must be globally unique; change `app` if "already taken".
+app = "work-tracker-uat"
+primary_region = "sin"              # Singapore (closest to Thailand)
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  WT_HOST = "0.0.0.0"
+  WT_PORT = "8787"
+  WT_DATA_DIR = "/var/data"         # persistent volume (data survives restarts)
+
+[http_service]
+  internal_port = 8787
+  force_https = true
+  auto_stop_machines = "stop"       # scale to zero when idle (saves free quota)
+  auto_start_machines = true        # wake on request (brief cold start)
+  min_machines_running = 0          # set to 1 for always-on (uses more free quota)
+
+[[mounts]]
+  source = "wt_data"                # volume name (fly volumes create wt_data ...)
+  destination = "/var/data"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
