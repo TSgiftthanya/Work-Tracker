@@ -8,6 +8,7 @@ DATA_DIR=os.environ.get('WT_DATA_DIR') or os.path.expanduser('~/Library/Applicat
 os.makedirs(DATA_DIR, exist_ok=True)
 STATE_LOCK=threading.RLock()
 DATA_FILE=os.path.join(DATA_DIR,'data.json')
+HIST_FILE=os.path.join(DATA_DIR,'task_history.json')  # shared task change-history (team-wide)
 USERS_FILE=os.path.join(DATA_DIR,'users.json')
 CONFIG_FILE=os.path.join(DATA_DIR,'config.json')
 TEMPLATE=os.path.join(BASE,'index.html')
@@ -571,6 +572,13 @@ class H(BaseHTTPRequestHandler):
             out={'users':users,'source':user_source(),'is_admin':adm}
             if adm: out['sheet_url']=get_config().get('users_csv_url','')
             return self._json(200,out)
+        if path=='/api/task-log':
+            if not self._user(): return self._json(401,{'error':'unauthorized'})
+            tid=(parse_qs(u.query).get('id') or [None])[0]
+            with STATE_LOCK:
+                h=jread(HIST_FILE,{})
+            if tid is None: return self._json(200,{'ok':True,'entries':[]})
+            return self._json(200,{'ok':True,'entries':h.get(str(tid),[])})
         if path=='/api/state':
             if not self._user(): return self._json(401,{'error':'unauthorized'})
             return self._json(200,jread(DATA_FILE,{}))
@@ -675,6 +683,18 @@ class H(BaseHTTPRequestHandler):
             if not self._user(): return self._json(401,{'ok':False,'error':'unauthorized'})
             b=self._bjson(); ok,err,cnt=import_data(b.get('url'), b.get('mode'))
             return self._json(200 if ok else 400,{'ok':ok,'error':err,'count':cnt})
+        if path=='/api/task-log':
+            usr=self._user()
+            if not usr: return self._json(401,{'error':'unauthorized'})
+            b=self._bjson(); tid=b.get('id'); action=(b.get('action') or '').strip()
+            if tid is None or not action: return self._json(400,{'error':'id and action required'})
+            entry={'at':int(time.time()*1000),'by':usr.get('name') or 'ผู้ใช้','action':action[:400]}
+            with STATE_LOCK:
+                h=jread(HIST_FILE,{}); k=str(tid)
+                if not isinstance(h.get(k),list): h[k]=[]
+                h[k].append(entry); h[k]=h[k][-60:]
+                jwrite(HIST_FILE,h)
+            return self._json(200,{'ok':True,'entry':entry})
         if path=='/api/state':
             if not self._user(): return self._json(401,{'error':'unauthorized'})
             key=(parse_qs(u.query).get('key') or [None])[0]
