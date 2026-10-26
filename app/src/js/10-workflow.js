@@ -14,12 +14,15 @@ function openEdit(proj,comm,name){
 function closeEdit(){q("projEditModal").classList.remove("open");ctx=null;}
 window.openProjCreate=function(){ctx={create:true};var _h=document.querySelector("#projEditModal .modalhead h2");if(_h)_h.textContent="สร้าง Projects & Teams";q("projEditName").value="";q("projEditComm").value="Internal";q("projEditInfo").textContent="สร้างการ์ดใหม่ · จะเพิ่มเข้า Projects & Teams (0 งาน จนกว่าจะมอบหมายงาน)";q("projEditModal").classList.add("open");};
 function delProj(proj,name){var TT=(typeof tasks!=="undefined"&&tasks)?tasks:[];var n=TT.filter(function(t){return t.project===proj;}).length;var msg="ลบการ์ดโปรเจกต์ “"+(name||proj)+"” ออกจาก Projects & Teams?"+(n?("\n(งาน "+n+" รายการยังอยู่ในระบบ ไม่ถูกลบ)"):"");if(!window.confirm(msg))return;try{var l=JSON.parse(localStorage.getItem("worktracker-projteams-v1")||"[]");l=l.filter(function(x){return (x&&x.name?x.name:x)!==proj;});localStorage.setItem("worktracker-projteams-v1",JSON.stringify(l));}catch(e){}try{var a=JSON.parse(localStorage.getItem("worktracker-proj-archived-v1")||"[]");if(!Array.isArray(a))a=[];if(a.indexOf(proj)<0)a.push(proj);localStorage.setItem("worktracker-proj-archived-v1",JSON.stringify(a));}catch(e){}if(typeof render==="function")render();if(typeof notify==="function")notify("ลบการ์ด “"+(name||proj)+"” แล้ว"+(n?(" · เก็บงาน "+n+" รายการไว้"):""));}
+function restoreProj(proj){try{var a=JSON.parse(localStorage.getItem("worktracker-proj-archived-v1")||"[]");if(!Array.isArray(a))a=[];a=a.filter(function(x){return x!==proj;});localStorage.setItem("worktracker-proj-archived-v1",JSON.stringify(a));}catch(e){}if(typeof render==="function")render();if(typeof notify==="function")notify("กู้คืนโปรเจกต์ “"+proj+"” แล้ว");}
 // intercept the edit button before the card's openProject click fires
 document.addEventListener("click",function(e){
   var b=e.target.closest(".projedit");
   if(b){e.stopPropagation();e.preventDefault();openEdit(b.getAttribute("data-proj"),b.getAttribute("data-comm"),b.getAttribute("data-name"));return;}
   var d=e.target.closest(".projdel");
-  if(d){e.stopPropagation();e.preventDefault();delProj(d.getAttribute("data-proj"),d.getAttribute("data-name"));}
+  if(d){e.stopPropagation();e.preventDefault();delProj(d.getAttribute("data-proj"),d.getAttribute("data-name"));return;}
+  var rb=e.target.closest(".projrestore");
+  if(rb){e.stopPropagation();e.preventDefault();restoreProj(rb.getAttribute("data-proj"));}
 },true);
 function wire(){
   var m=q("projEditModal");if(!m)return;
