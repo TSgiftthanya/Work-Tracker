@@ -11,7 +11,7 @@ var gran="month",pval=null,view="dept";var curRowDim="",curColDim="",curColKeys=
 function uniq(a){var s={},o=[];a.forEach(function(x){if(!s[x]){s[x]=1;o.push(x);}});return o;}
 function valsOf(recs){if(gran==="day")return uniq(recs.map(function(r){return r.ymd;})).sort().reverse();if(gran==="year")return uniq(recs.map(function(r){return String(r.y);})).sort().reverse();return uniq(recs.map(function(r){return r.ym;})).sort().reverse();}
 function labelOf(v){if(gran==="day"){var p=v.split("-");return parseInt(p[2],10)+" "+TM[parseInt(p[1],10)]+" "+(parseInt(p[0],10)+543);}if(gran==="year")return "ปี "+(parseInt(v,10)+543);var p2=v.split("-");return TM[parseInt(p2[1],10)]+" "+(parseInt(p2[0],10)+543);}
-function inPeriod(r){if(gran==="day")return r.ymd===pval;if(gran==="year")return String(r.y)===pval;return r.ym===pval;}
+function inPeriod(r){if(gran==="custom"){var rs=q("dvStart")?q("dvStart").value:"",re=q("dvEnd")?q("dvEnd").value:"";if(!rs&&!re)return true;if(rs&&r.ymd<rs)return false;if(re&&r.ymd>re)return false;return true;}if(gran==="day")return r.ymd===pval;if(gran==="year")return String(r.y)===pval;return r.ym===pval;}
 function fieldOf(r,dim){return dim==="หน่วยงาน"?r.dept:dim==="ช่องทาง"?r.chan:r.topic;}
 function setActive(cls,attr,val){document.querySelectorAll(cls).forEach(function(b){var on=b.getAttribute(attr)===val;b.classList.toggle("primary",on);b.classList.toggle("ghost",!on);});}
 function renderMatrix(){
@@ -19,7 +19,7 @@ function renderMatrix(){
  if(!recs){mb.innerHTML='<div class="tiny muted">ยังไม่มีข้อมูล · กดปุ่ม “⬇ Mapping ข้อมูล”</div>';return;}
  var vs=valsOf(recs);if(!pval||vs.indexOf(pval)<0)pval=vs[0];
  q("dvPeriodVal").innerHTML=vs.map(function(v){return '<option value="'+esc(v)+'"'+(v===pval?' selected':'')+'>'+esc(labelOf(v))+'</option>';}).join("");
- setActive(".dv-gran","data-gran",gran);
+ setActive(".dv-gran","data-gran",gran);var _isC=(gran==="custom"),_ps=q("dvPeriodVal"),_ds=q("dvStart"),_de=q("dvEnd"),_dd=q("dvDash");if(_ps)_ps.hidden=_isC;[_ds,_de,_dd].forEach(function(x){if(x)x.hidden=!_isC;});if(_isC){var _t=new Date().toISOString().slice(0,10);if(_ds&&!_ds.value)_ds.value=_t;if(_de&&!_de.value)_de.value=_t;}
  var rowDim=q("dvRow").value,colDim=q("dvCol").value;
  var f=recs.filter(inPeriod);
  var rowsSet={},colsSet={},cell={},rowTot={},colTot={},grand=0,maxc=0;
@@ -36,7 +36,7 @@ function renderMatrix(){
  var footCols=colKeys.map(function(ck){return '<td style="text-align:center;font-weight:700">'+colTot[ck]+'</td>';}).join("");
  var footOther=otherCols.length?('<td style="text-align:center;font-weight:700">'+otherCols.reduce(function(n,ck){return n+colTot[ck];},0)+'</td>'):'';
  tb+='<tr><td style="position:sticky;left:0;background:#eef3fa;font-weight:700">รวม</td>'+footCols+footOther+'<td style="text-align:center;font-weight:800;background:#eef3fa">'+grand+'</td></tr></tbody>';
- mb.innerHTML='<div class="tiny muted" style="margin-bottom:8px">'+labelOf(pval)+' · '+rowKeys.length+' '+esc(rowDim)+' × '+(colKeys.length+(otherCols.length?1:0))+' '+esc(colDim)+' · รวม '+grand+' บันทึก'+(otherCols.length?(' · รวมคอลัมน์ที่เหลือ '+otherCols.length+' รายการไว้ใน “อื่นๆ”'):'')+'</div><div class="tablewrap" style="max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:10px"><table class="table" style="white-space:nowrap">'+th+tb+'</table></div>';
+ mb.innerHTML='<div class="tiny muted" style="margin-bottom:8px">'+(gran==="custom"?((q("dvStart")&&q("dvStart").value||"?")+" ถึง "+(q("dvEnd")&&q("dvEnd").value||"?")):labelOf(pval))+' · '+rowKeys.length+' '+esc(rowDim)+' × '+(colKeys.length+(otherCols.length?1:0))+' '+esc(colDim)+' · รวม '+grand+' บันทึก'+(otherCols.length?(' · รวมคอลัมน์ที่เหลือ '+otherCols.length+' รายการไว้ใน “อื่นๆ”'):'')+'</div><div class="tablewrap" style="max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:10px"><table class="table" style="white-space:nowrap">'+th+tb+'</table></div>';
 }
 function applyView(){
  var isM=view==="matrix";
@@ -46,7 +46,7 @@ function applyView(){
 }
 document.querySelectorAll(".dv-view").forEach(function(b){b.onclick=function(){view=b.dataset.view;applyView();};});
 document.querySelectorAll(".dv-gran").forEach(function(b){b.onclick=function(){gran=b.dataset.gran;pval=null;renderMatrix();};});
-q("dvPeriodVal").onchange=function(){pval=this.value;renderMatrix();};
+q("dvPeriodVal").onchange=function(){pval=this.value;renderMatrix();};var _ds2=q("dvStart"),_de2=q("dvEnd");if(_ds2)_ds2.onchange=renderMatrix;if(_de2)_de2.onchange=renderMatrix;
 q("dvRow").onchange=renderMatrix;q("dvCol").onchange=renderMatrix;
 document.querySelectorAll('.nav[data-page="deptstats"]').forEach(function(b){b.addEventListener("click",function(){if(view==="matrix")renderMatrix();});});
 function openCell(rk,ck){var recs=loadRecs();if(!recs)return;var list=recs.filter(function(r){if(!inPeriod(r))return false;if(fieldOf(r,curRowDim)!==rk)return false;if(ck==="__OTHER__")return curColKeys.indexOf(fieldOf(r,curColDim))<0;return fieldOf(r,curColDim)===ck;});var ckL=ck==="__OTHER__"?"อื่นๆ":ck;var t=document.getElementById("mCellTitle");if(t)t.textContent=curRowDim+": "+rk+"  ×  "+curColDim+": "+ckL+"  ·  "+list.length+" บันทึก";var rowsH=list.map(function(r){return '<tr><td>'+esc(r.dateStr||r.ymd)+'</td><td>'+esc(r.title||"—")+'</td><td>'+esc(r.topic)+'</td><td>'+esc(r.chan)+'</td><td>'+esc(r.dept)+'</td></tr>';}).join("");document.getElementById("mCellBody").innerHTML='<div class="tablewrap" style="max-height:430px;overflow:auto"><table class="table"><thead><tr><th>วันที่</th><th>เรื่อง</th><th>หัวข้อ</th><th>ช่องทาง</th><th>หน่วยงาน</th></tr></thead><tbody>'+(rowsH||'<tr><td colspan="5" class="empty">ไม่มีรายการ</td></tr>')+'</tbody></table></div>';document.getElementById("mCellModal").classList.add("open");}
