@@ -593,6 +593,17 @@ class H(BaseHTTPRequestHandler):
             out={'users':users,'source':user_source(),'is_admin':adm}
             if adm: out['sheet_url']=get_config().get('users_csv_url','')
             return self._json(200,out)
+        if path=='/api/tasks':
+            # lightweight poll: client sends its known rev; reply with tasks only when changed
+            if not self._user(): return self._json(401,{'error':'unauthorized'})
+            try: want=int((parse_qs(u.query).get('rev') or ['-1'])[0])
+            except Exception: want=-1
+            with STATE_LOCK:
+                d=jread(DATA_FILE,{}); rev=int(d.get('worktracker-tasks-rev') or 0)
+                if want==rev: return self._json(200,{'ok':True,'rev':rev,'changed':False})
+                try: tl=json.loads(d.get('worktracker-tasks-v1') or '[]')
+                except Exception: tl=[]
+            return self._json(200,{'ok':True,'rev':rev,'changed':True,'tasks':tl})
         if path=='/api/task-log':
             if not self._user(): return self._json(401,{'error':'unauthorized'})
             tid=(parse_qs(u.query).get('id') or [None])[0]
@@ -704,6 +715,33 @@ class H(BaseHTTPRequestHandler):
             if not self._user(): return self._json(401,{'ok':False,'error':'unauthorized'})
             b=self._bjson(); ok,err,cnt=import_data(b.get('url'), b.get('mode'))
             return self._json(200 if ok else 400,{'ok':ok,'error':err,'count':cnt})
+        if path=='/api/tasks/sync':
+            # atomic per-card merge: apply only this client's upserts/deletes to the
+            # authoritative task list under the lock, so concurrent users never clobber
+            # each other's cards (replaces the old whole-blob last-write-wins save).
+            if not self._user(): return self._json(401,{'error':'unauthorized'})
+            b=self._bjson()
+            ups=b.get('upserts') or []; dels=b.get('deletes') or []
+            delset=set(dels)
+            with STATE_LOCK:
+                d=jread(DATA_FILE,{})
+                try: cur=json.loads(d.get('worktracker-tasks-v1') or '[]')
+                except Exception: cur=[]
+                if not isinstance(cur,list): cur=[]
+                byid={}
+                for idx,t in enumerate(cur):
+                    if isinstance(t,dict) and 'id' in t: byid[t['id']]=idx
+                newups=[]
+                for uo in ups:
+                    if not isinstance(uo,dict) or 'id' not in uo: continue
+                    if uo['id'] in byid: cur[byid[uo['id']]]=uo
+                    elif uo['id'] not in delset: newups.append(uo)
+                kept=[t for t in cur if not(isinstance(t,dict) and t.get('id') in delset)]
+                merged=newups+kept
+                d['worktracker-tasks-v1']=json.dumps(merged,ensure_ascii=False)
+                rev=int(d.get('worktracker-tasks-rev') or 0)+1; d['worktracker-tasks-rev']=rev
+                jwrite(DATA_FILE,d)
+            return self._json(200,{'ok':True,'rev':rev,'tasks':merged})
         if path=='/api/task-log':
             usr=self._user()
             if not usr: return self._json(401,{'error':'unauthorized'})
