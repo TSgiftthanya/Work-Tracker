@@ -294,7 +294,11 @@ def map_media_plan(rows, comm):
         return -1
     i_title=find('เรื่องสื่อสาร','เรื่อง')
     if i_title<0: return []
-    i_date=find('วันที่','DATE','Date')
+    # internal uses a single 'วันที่'; external splits it into
+    # วันดำเนินการ (start/due) · วันเผยแพร่ (publish) · วันเสร็จสิ้น (done)
+    i_date=find('วันที่','DATE','Date','วันดำเนินการ')
+    i_pub=find('วันเผยแพร่','วันที่','DATE','Date')
+    i_done=find('วันเสร็จสิ้น','วันเสร็จ')
     i_proj=find('ชื่อโครงการ/แคมเปญ','ชื่อโครงการ/แคมเปน','ชื่อโครงการ','ชื่อแคมเปญ','แคมเปญ','โครงการ')
     i_cat=find('หัวข้อ'); i_unit=find('หน่วยงาน'); i_stat=find('สถานะ')
     i_chan=findpfx('ช่องทาง'); i_fmt=findpfx('รูปแบบ')
@@ -325,7 +329,12 @@ def map_media_plan(rows, comm):
     for r in rows[data_start:]:
         title=g(r,i_title)
         if not title: continue
-        date=parse_thai_date(g(r,i_date)) if i_date>=0 else ''
+        due=parse_thai_date(g(r,i_date)) if i_date>=0 else ''
+        pub=parse_thai_date(g(r,i_pub)) if i_pub>=0 else ''
+        done=parse_thai_date(g(r,i_done)) if i_done>=0 else ''
+        if not pub: pub=due
+        if not due: due=pub
+        date=pub or due
         chans=[lbl(j) for j in chan_cols if tf(g(r,j))]
         fmts=[lbl(j) for j in fmt_cols if tf(g(r,j))]
         cat=g(r,i_cat) if i_cat>=0 else ''
@@ -341,9 +350,9 @@ def map_media_plan(rows, comm):
         if chans: bp.append('ช่องทาง: '+', '.join(chans))
         if fmts: bp.append('รูปแบบ: '+', '.join(fmts))
         t={'title':title,'project':(proj or ('หน่วยงาน '+unit if unit else 'DATA Media Plan')),'comm':comm,'kind':kind,'priority':'Normal',
-           'lead':'','support':'','checker':'','approver':'','due':date,'publish':date,'status':status,
+           'lead':'','support':'','checker':'','approver':'','due':due,'publish':pub,'status':status,
            'brief':' · '.join(bp),'modes':{},'src':'sheet','srcMode':mode}
-        if status=='Completed' and date: t['completed']=date
+        if status=='Completed' and (done or date): t['completed']=done or date
         warn=[]
         if not date: warn.append('ไม่มีวันที่')
         if rs and rs not in STAT: warn.append('สถานะไม่รู้จัก: '+rs)
@@ -389,10 +398,22 @@ def raw_tab_ok(rows, mode):
     return ('ชื่อโครงการ' in txt or 'แคมเปญ' in txt or 'วันเผยแพร่' in txt or 'วันดำเนินการ' in txt)
 
 def tab_matches(rows, mode):
-    labs=[l.upper() for l in channel_labels(rows)]
-    if not labs: return False
-    cust=any(any(k in l for k in ('LINE','SMS','BANNER','TOPHIT','TOP HIT')) for l in labs)
-    return cust if mode=='external' else (not cust)
+    # gviz returns the first tab when the requested sheet name is missing, so we
+    # must confirm the returned tab really is the requested mode. Internal and
+    # external tabs can share the same channel columns (LINE/SMS/BANNER/TOPHIT),
+    # so discriminate by the HEADER COLUMNS, which differ by schema:
+    #   internal → หน่วยงาน / จำนวน / หัวข้อ (record log)
+    #   external → ชื่อโครงการ-แคมเปญ / วันดำเนินการ / วันเผยแพร่ (campaign plan)
+    hi=-1
+    for i,r in enumerate(rows[:15]):
+        if any((c or '').strip() in ('เรื่องสื่อสาร','เรื่อง') for c in r): hi=i; break
+    if hi<0: return False
+    H=[(c or '').strip() for c in rows[hi]]
+    hs=set(H)
+    internal_sig=bool(hs & {'หน่วยงาน','จำนวน','หัวข้อ'})
+    external_sig=any(('ชื่อโครงการ' in c or 'แคมเปญ' in c or c in ('วันเผยแพร่','วันดำเนินการ','วันเสร็จสิ้น')) for c in H)
+    if mode=='internal': return internal_sig and not external_sig
+    return external_sig and not internal_sig
 
 def fetch_media_tab(url, mode):
     sid=extract_sheet_id(url)
