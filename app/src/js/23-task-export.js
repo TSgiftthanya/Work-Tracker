@@ -82,10 +82,10 @@
       return (x.type||'')+(x.owner?(': '+x.owner):'')+(x.detail?(' ('+x.detail+')'):'');
     }).filter(Boolean).join(', ');
   }
-  function buildRows(){
+  function buildRows(list){
     var H=['ID','ชื่องาน','ประเภทการสื่อสาร','Project','สถานะ','ความสำคัญ','ผู้รับผิดชอบหลัก','ผู้ร่วมงาน','ผู้รับผิดชอบรายประเภท','Checker / ผู้ตรวจ','ผู้อนุมัติ / เผยแพร่','กำหนดส่ง (Due)','วันเผยแพร่','วันเสร็จสิ้น','Brief'];
     var rows=[H];
-    var list=(typeof tasks!=='undefined'&&tasks)?tasks:[];
+    list=list||[];
     for(var i=0;i<list.length;i++){
       var t=list[i]||{};
       rows.push([
@@ -96,23 +96,31 @@
     }
     return rows;
   }
-  function download(){
+  function allTasks(){return (typeof tasks!=='undefined'&&tasks)?tasks:[];}
+  function filteredTasks(){
+    // the board publishes its current filtered set to window.__wtBoardShown;
+    // fall back to all tasks if the board hasn't rendered yet.
+    var s=window.__wtBoardShown;
+    return (s&&s.length!==undefined)?s:allTasks();
+  }
+  function download(list,suffix,scopeLabel){
     try{
-      var rows=buildRows();
+      var rows=buildRows(list);
       var bytes=buildXlsx(rows);
       var blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
       var d=new Date();var pad=function(n){return (n<10?'0':'')+n;};
-      var fn='WorkTracker-TaskBoard-'+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'.xlsx';
+      var fn='WorkTracker-TaskBoard'+(suffix||'')+'-'+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'.xlsx';
       var url=URL.createObjectURL(blob);
       var a=document.createElement('a');a.href=url;a.download=fn;document.body.appendChild(a);a.click();
       setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},300);
-      if(typeof notify==='function')notify('Export '+(rows.length-1)+' งาน เป็น .xlsx แล้ว');
+      if(typeof notify==='function')notify('Export '+(rows.length-1)+' งาน'+(scopeLabel||'')+' เป็น .xlsx แล้ว');
     }catch(e){
       if(typeof notify==='function')notify('Export ไม่สำเร็จ: '+(e&&e.message||e));
     }
   }
   document.addEventListener('click',function(e){
-    var b=e.target.closest&&e.target.closest('#wtExportXlsx');
-    if(b){e.preventDefault();download();}
+    if(!e.target.closest)return;
+    if(e.target.closest('#wtExportXlsx')){e.preventDefault();download(allTasks(),'','ทั้งหมด');return;}
+    if(e.target.closest('#wtExportXlsxFiltered')){e.preventDefault();download(filteredTasks(),'-filtered',' (ที่กรอง)');return;}
   });
 })();
