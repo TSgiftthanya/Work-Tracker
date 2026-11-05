@@ -9,6 +9,8 @@ os.makedirs(DATA_DIR, exist_ok=True)
 STATE_LOCK=threading.RLock()
 DATA_FILE=os.path.join(DATA_DIR,'data.json')
 HIST_FILE=os.path.join(DATA_DIR,'task_history.json')  # shared task change-history (team-wide)
+# shared, id-keyed collections that use atomic per-item merge (no whole-blob last-write-wins)
+COLL_KEYS={'worktracker-commplan-v1','worktracker-projteams-v1','worktracker-proj-archived-v1'}
 USERS_FILE=os.path.join(DATA_DIR,'users.json')
 CONFIG_FILE=os.path.join(DATA_DIR,'config.json')
 TEMPLATE=os.path.join(BASE,'index.html')
@@ -510,12 +512,21 @@ def is_admin(user):
 BOOT=('<script>window.__WT_USER__=%s;window.__WT_STATE__=%s;(function(){var cache=Object.assign({},window.__WT_STATE__||{});'
  'function save(k,v){fetch("/api/state?key="+encodeURIComponent(k),{method:"POST",body:v}).catch(function(){});}'
  'var shim={getItem:function(k){return Object.prototype.hasOwnProperty.call(cache,k)?cache[k]:null;},'
- 'setItem:function(k,v){cache[k]=String(v);save(k,String(v));},'
+ 'setItem:function(k,v){cache[k]=String(v);if(typeof MK!=="undefined"&&MK[k]){collSave(k);}else{save(k,String(v));}},'
  'removeItem:function(k){delete cache[k];fetch("/api/state?key="+encodeURIComponent(k),{method:"DELETE"}).catch(function(){});},'
  'clear:function(){Object.keys(cache).forEach(function(k){delete cache[k];});fetch("/api/state",{method:"DELETE"}).catch(function(){});},'
  'key:function(i){return Object.keys(cache)[i]||null;}};'
  'try{Object.defineProperty(shim,"length",{get:function(){return Object.keys(cache).length;}});}catch(e){}'
  'try{Object.defineProperty(window,"localStorage",{configurable:true,value:shim});}catch(e){try{window.localStorage=shim;}catch(_){}}'
+ 'var MK={"worktracker-commplan-v1":{idf:"cid",rf:"renderCP"},"worktracker-projteams-v1":{idf:"name",rf:"render"},"worktracker-proj-archived-v1":{idf:"",rf:"render"}};'
+ 'var crev={},cbase={};'
+ 'function cidof(idf,x){return idf?(x&&x[idf]):x;}'
+ 'function csnap(k){var m={};try{var a=JSON.parse(cache[k]||"[]");if(a&&a.length!==undefined){for(var i=0;i<a.length;i++){var id=cidof(MK[k].idf,a[i]);if(id!=null)m[String(id)]=JSON.stringify(a[i]);}}}catch(e){}cbase[k]=m;}'
+ 'function crefresh(k){var fn=MK[k].rf;try{if(typeof window[fn]==="function")window[fn]();}catch(e){}}'
+ 'function collSave(k){var idf=MK[k].idf,a;try{a=JSON.parse(cache[k]||"[]");}catch(e){return;}if(!a||a.length===undefined)return;var ups=[],dels=[],seen={},b=cbase[k]||{};for(var i=0;i<a.length;i++){var id=cidof(idf,a[i]);if(id==null)continue;id=String(id);seen[id]=1;if(b[id]!==JSON.stringify(a[i]))ups.push(a[i]);}for(var j in b){if(!seen[j])dels.push(j);}if(!ups.length&&!dels.length)return;fetch("/api/collection/sync",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:k,idfield:idf||"",upserts:ups,deletes:dels})}).then(function(r){return r.json();}).then(function(res){if(res&&res.ok){cache[k]=JSON.stringify(res.items);crev[k]=res.rev;csnap(k);}}).catch(function(){});}'
+ 'function collPoll(){if(document.hidden)return;Object.keys(MK).forEach(function(k){fetch("/api/collection?key="+encodeURIComponent(k)+"&rev="+(crev[k]||0)).then(function(r){return r.json();}).then(function(res){if(res&&res.ok&&res.changed){cache[k]=JSON.stringify(res.items);crev[k]=res.rev;csnap(k);crefresh(k);}}).catch(function(){});});}'
+ 'Object.keys(MK).forEach(function(k){crev[k]=(window.__WT_STATE__&&+window.__WT_STATE__[k+"::rev"])||0;csnap(k);});'
+ 'setInterval(collPoll,8000);'
  '})();</script>')
 
 class H(BaseHTTPRequestHandler):
@@ -604,6 +615,19 @@ class H(BaseHTTPRequestHandler):
                 try: tl=json.loads(d.get('worktracker-tasks-v1') or '[]')
                 except Exception: tl=[]
             return self._json(200,{'ok':True,'rev':rev,'changed':True,'tasks':tl})
+        if path=='/api/collection':
+            # lightweight poll for a shared id-keyed collection (commplan/projteams/proj-archived)
+            if not self._user(): return self._json(401,{'error':'unauthorized'})
+            qs=parse_qs(u.query); key=(qs.get('key') or [''])[0]
+            if key not in COLL_KEYS: return self._json(400,{'error':'bad key'})
+            try: want=int((qs.get('rev') or ['-1'])[0])
+            except Exception: want=-1
+            with STATE_LOCK:
+                d=jread(DATA_FILE,{}); rev=int(d.get(key+'::rev') or 0)
+                if want==rev: return self._json(200,{'ok':True,'rev':rev,'changed':False})
+                try: it=json.loads(d.get(key) or '[]')
+                except Exception: it=[]
+            return self._json(200,{'ok':True,'rev':rev,'changed':True,'items':it})
         if path=='/api/task-log':
             if not self._user(): return self._json(401,{'error':'unauthorized'})
             tid=(parse_qs(u.query).get('id') or [None])[0]
@@ -742,6 +766,40 @@ class H(BaseHTTPRequestHandler):
                 rev=int(d.get('worktracker-tasks-rev') or 0)+1; d['worktracker-tasks-rev']=rev
                 jwrite(DATA_FILE,d)
             return self._json(200,{'ok':True,'rev':rev,'tasks':merged})
+        if path=='/api/collection/sync':
+            # atomic per-item merge for a shared id-keyed collection, so concurrent
+            # users never clobber each other (same pattern as /api/tasks/sync).
+            # Items may be dicts (id = item[idfield]) or plain strings (id = the string).
+            if not self._user(): return self._json(401,{'error':'unauthorized'})
+            b=self._bjson(); key=b.get('key') or ''
+            if key not in COLL_KEYS: return self._json(400,{'error':'bad key'})
+            idf=b.get('idfield') or ''
+            def _idof(x):
+                if isinstance(x,dict): return x.get(idf) if idf else None
+                return x
+            ups=b.get('upserts') or []; dels=b.get('deletes') or []
+            delset=set(dels)
+            with STATE_LOCK:
+                d=jread(DATA_FILE,{})
+                try: cur=json.loads(d.get(key) or '[]')
+                except Exception: cur=[]
+                if not isinstance(cur,list): cur=[]
+                byid={}
+                for idx,t in enumerate(cur):
+                    tid=_idof(t)
+                    if tid is not None: byid[tid]=idx
+                newups=[]
+                for uo in ups:
+                    tid=_idof(uo)
+                    if tid is None: continue
+                    if tid in byid: cur[byid[tid]]=uo
+                    elif tid not in delset: newups.append(uo)
+                kept=[t for t in cur if _idof(t) not in delset]
+                merged=newups+kept
+                d[key]=json.dumps(merged,ensure_ascii=False)
+                rev=int(d.get(key+'::rev') or 0)+1; d[key+'::rev']=rev
+                jwrite(DATA_FILE,d)
+            return self._json(200,{'ok':True,'rev':rev,'items':merged})
         if path=='/api/task-log':
             usr=self._user()
             if not usr: return self._json(401,{'error':'unauthorized'})
