@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import json, os, io, csv, time, hmac, hashlib, base64, secrets, urllib.request, re, threading
+import json, os, io, csv, time, hmac, hashlib, base64, secrets, urllib.request, re, threading, gzip
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 
@@ -536,10 +536,18 @@ BOOT=('<script>window.__WT_PREVIEW__=%s;window.__WT_USER__=%s;window.__WT_STATE_
 class H(BaseHTTPRequestHandler):
     def _send(self,code,body=b'',ctype='application/json; charset=utf-8',extra=None):
         if isinstance(body,str): body=body.encode('utf-8')
+        hdrs=list(extra or [])
+        # transparent gzip for compressible text when the client accepts it (browser auto-decodes)
+        try: ae=(self.headers.get('Accept-Encoding','') or '').lower()
+        except Exception: ae=''
+        comp=('text/' in ctype) or ('javascript' in ctype) or ('json' in ctype) or ('css' in ctype) or ('svg' in ctype)
+        if body and comp and len(body)>=1024 and 'gzip' in ae:
+            body=gzip.compress(body,5)
+            hdrs.append(('Content-Encoding','gzip')); hdrs.append(('Vary','Accept-Encoding'))
         self.send_response(code)
         self.send_header('Content-Type',ctype)
         self.send_header('Content-Length',str(len(body)))
-        for k,v in (extra or []): self.send_header(k,v)
+        for k,v in hdrs: self.send_header(k,v)
         self.end_headers()
         if body: self.wfile.write(body)
     def _json(self,code,obj,extra=None):
@@ -569,7 +577,7 @@ class H(BaseHTTPRequestHandler):
             ct='text/javascript; charset=utf-8' if rel.endswith('.js') else 'text/css; charset=utf-8'
             try: body=open(fp,encoding='utf-8').read()
             except Exception as e: return self._send(500,str(e),'text/plain; charset=utf-8')
-            return self._send(200,body,ct,extra=[('Cache-Control','no-store')])
+            return self._send(200,body,ct,extra=[('Cache-Control','public, max-age=31536000, immutable')])  # safe: URLs are versioned (?v=hash), a new build busts the cache
         if path=='/login':
             try: html=open(LOGIN_TPL,encoding='utf-8').read()
             except Exception as e: return self._send(500,str(e),'text/plain; charset=utf-8')
