@@ -73,14 +73,13 @@
     function ensure(p) { return acc[p] || (acc[p] = { "บันทึก": 0, "Infographic": 0, "VDO": 0, checker: 0, approval: 0, comm: 0, total: 0 }); }
     tasks.forEach(function (t) {
       if (t.status === "Cancelled") return;
-      var mu = mult(S, taskMods(t)), units = taskUnits(t), R = responsibility(S, t), mediaSeen = {};
+      var mu = mult(S, taskMods(t)), units = taskUnits(t), R = responsibility(S, t);
       units.forEach(function (u) {
-        mediaSeen[u.media] = 1;
         var jw = baseFor(S, u.media, u.detail) * mu;
         if (u.owner) { var a = ensure(u.owner); if (a[u.media] != null) a[u.media] += jw * R.primary; a.total += jw * R.primary; }
         R.support.forEach(function (sp) { var a = ensure(sp); if (a[u.media] != null) a[u.media] += jw * R.supportEach; a.total += jw * R.supportEach; });
       });
-      if (t.checker) { var nC = Object.keys(mediaSeen).length || 1; var cv = S.checkerBase * mu * nC; var a = ensure(t.checker); a.checker += cv; a.total += cv; }
+      if (t.checker) { var cv = S.checkerBase * mu; var a = ensure(t.checker); a.checker += cv; a.total += cv; } // flat per task — no media-count multiplier (consistent with Approver/comm)
       if (t.approver) { var av = S.approvalBase * mu; var b = ensure(t.approver); b.approval += av; b.total += av; }
       commList(t).forEach(function (cp) { var cw = S.commBase * mu; var a = ensure(cp); a.comm += cw; a.total += cw; }); // each comm owner credited in full
     });
@@ -118,9 +117,9 @@
 
   // Planned (standard) hours for a whole task = Σ unit Std-Hrs × mult (+ checker/approval hrs). Basis for Productivity.
   function plannedHours(S, t) {
-    S = S || DEFAULTS; var mu = mult(S, taskMods(t)), h = 0, units = taskUnits(t), ms = {};
-    units.forEach(function (u) { ms[u.media] = 1; h += hrsFor(S, u.media, u.detail) * mu; });
-    if (t.checker) h += (S.checkerHrs || 0) * mu * (Object.keys(ms).length || 1);
+    S = S || DEFAULTS; var mu = mult(S, taskMods(t)), h = 0, units = taskUnits(t);
+    units.forEach(function (u) { h += hrsFor(S, u.media, u.detail) * mu; });
+    if (t.checker) h += (S.checkerHrs || 0) * mu;
     if (t.approver) h += (S.approvalHrs || 0) * mu;
     h += (S.commHrs || 0) * mu * commList(t).length; // comm owners each add their standard hours
     return round1(h);

@@ -38,7 +38,7 @@ function rowsShown(T){return T.rows.filter(function(r){return !ST.member||r.memb
 
 // media unit COUNT per member (for matrix count mode)
 function countMatrix(tasks){var acc={};function ens(p){return acc[p]||(acc[p]={'บันทึก':0,'Infographic':0,'VDO':0,checker:0,approval:0,comm:0,total:0});}
- tasks.forEach(function(t){var units=W().taskUnits(t),ms={};units.forEach(function(u){ms[u.media]=1;if(u.owner){var a=ens(u.owner);if(a[u.media]!=null)a[u.media]++;a.total++;}});if(t.checker){var a=ens(t.checker);var n=Object.keys(ms).length||1;a.checker+=n;a.total+=n;}if(t.approver){var b=ens(t.approver);b.approval++;b.total++;}W().commList(t).forEach(function(cp){var c=ens(cp);c.comm++;c.total++;});});return acc;}
+ tasks.forEach(function(t){var units=W().taskUnits(t);units.forEach(function(u){if(u.owner){var a=ens(u.owner);if(a[u.media]!=null)a[u.media]++;a.total++;}});if(t.checker){var a=ens(t.checker);a.checker++;a.total++;}if(t.approver){var b=ens(t.approver);b.approval++;b.total++;}W().commList(t).forEach(function(cp){var c=ens(cp);c.comm++;c.total++;});});return acc;}
 
 function kpi(v,l,sub){return '<div class="wc-kpi"><div class="wl">'+E(l)+'</div><div class="wv">'+v+'</div>'+(sub?'<div class="ws">'+E(sub)+'</div>':'')+'</div>';}
 function NA(x){return x==null?'<span class="wc-na">N/A</span>':x;}
