@@ -37,8 +37,8 @@ function teamData(){var s=selMonths();return W().team(scope(),PEOPLE(),getS(),LE
 function rowsShown(T){return T.rows.filter(function(r){return !ST.member||r.member===ST.member;});}
 
 // media unit COUNT per member (for matrix count mode)
-function countMatrix(tasks){var acc={};function ens(p){return acc[p]||(acc[p]={'บันทึก':0,'Infographic':0,'VDO':0,checker:0,approval:0,total:0});}
- tasks.forEach(function(t){var units=W().taskUnits(t),ms={};units.forEach(function(u){ms[u.media]=1;if(u.owner){var a=ens(u.owner);if(a[u.media]!=null)a[u.media]++;a.total++;}});if(t.checker){var a=ens(t.checker);var n=Object.keys(ms).length||1;a.checker+=n;a.total+=n;}if(t.approver){var b=ens(t.approver);b.approval++;b.total++;}});return acc;}
+function countMatrix(tasks){var acc={};function ens(p){return acc[p]||(acc[p]={'บันทึก':0,'Infographic':0,'VDO':0,checker:0,approval:0,comm:0,total:0});}
+ tasks.forEach(function(t){var units=W().taskUnits(t),ms={};units.forEach(function(u){ms[u.media]=1;if(u.owner){var a=ens(u.owner);if(a[u.media]!=null)a[u.media]++;a.total++;}});if(t.checker){var a=ens(t.checker);var n=Object.keys(ms).length||1;a.checker+=n;a.total+=n;}if(t.approver){var b=ens(t.approver);b.approval++;b.total++;}W().commList(t).forEach(function(cp){var c=ens(cp);c.comm++;c.total++;});});return acc;}
 
 function kpi(v,l,sub){return '<div class="wc-kpi"><div class="wl">'+E(l)+'</div><div class="wv">'+v+'</div>'+(sub?'<div class="ws">'+E(sub)+'</div>':'')+'</div>';}
 function NA(x){return x==null?'<span class="wc-na">N/A</span>':x;}
@@ -60,8 +60,8 @@ function trendChart(tr){var VW=560,H=150,padL=34,padR=12,padT=16,padB=26,n=tr.le
   +'<div class="wc-legend"><span style="color:#8fb4e8">▇ Workload (pts)</span> · <span style="color:#e08a2b">● Utilization %</span> · <span style="color:#2e7d4f">● KPI</span></div>';
 }
 // media-type palette + category list (shared by donut/legend/compare)
-var MBPAL={'บันทึก':'#1766cc','Infographic':'#4b90e2','VDO':'#8e5bd0','checker':'#e08a2b','approval':'#2e7d4f'};
-var MBCATS=[['บันทึก','บันทึก'],['Infographic','Infographic'],['VDO','VDO'],['ตรวจ/อนุมัติสื่อ','checker'],['อื่นๆ (เผยแพร่)','approval']];
+var MBPAL={'บันทึก':'#1766cc','Infographic':'#4b90e2','VDO':'#8e5bd0','checker':'#e08a2b','approval':'#2e7d4f','comm':'#d9488a'};
+var MBCATS=[['บันทึก','บันทึก'],['Infographic','Infographic'],['VDO','VDO'],['ตรวจ/อนุมัติสื่อ','checker'],['อื่นๆ (เผยแพร่)','approval'],['การสื่อสาร','comm']];
 function mbTotal(m){return MBCATS.reduce(function(s,c){return s+(m[c[1]]||0);},0);}
 function prevYM(ym){var d=new Date(ym+'-01T00:00:00'),x=new Date(d.getFullYear(),d.getMonth()-1,1);return x.getFullYear()+'-'+('0'+(x.getMonth()+1)).slice(-2);}
 function mbForYM(ym){var list=allScoped().filter(function(t){return (t.due&&t.due.slice(0,7)===ym)||(t.publish&&t.publish.slice(0,7)===ym);});return W().mediaBreakdown(list,getS());}
@@ -83,7 +83,7 @@ function mediaChart(mb){
 }
 // ---------- TAB: OVERVIEW ----------
 function renderOverview(){var T=teamData(),mb=W().mediaBreakdown(scope(),getS());
- var mbTot=mb['บันทึก']+mb['Infographic']+mb['VDO']+mb.checker+mb.approval;function pc(n){return mbTot?Math.round(100*n/mbTot):0;}
+ var mbTot=mb['บันทึก']+mb['Infographic']+mb['VDO']+mb.checker+mb.approval+mb.comm;function pc(n){return mbTot?Math.round(100*n/mbTot):0;}
  var h='<div class="wc-kpis">'+kpi(T.totalWorkload+' pts','Total Team Workload')+kpi(T.totalCapacity+' pts','Team Capacity',PEOPLE().length+' คน')+kpi((T.avgUtilization==null?'N/A':T.avgUtilization+'%'),'Team Utilization')+kpi((T.avgKpi==null?'N/A':T.avgKpi+' / 100'),'Team KPI (avg)')+kpi(T.overloaded,'Overloaded Members')+kpi(T.overdue,'Overdue Work')+'</div>';
  h+='<div class="wc-2col"><div class="panel"><h3>Workload by Media Type</h3>'+mediaChart(mb)+'</div>';
  h+='<div class="panel"><h3>Workload & KPI by Member</h3><table class="table wc-t"><thead><tr><th>Member</th><th>Workload</th><th>Util</th><th>KPI</th><th>Grade</th></tr></thead><tbody>'
@@ -96,11 +96,11 @@ function renderOverview(){var T=teamData(),mb=W().mediaBreakdown(scope(),getS())
 }
 // ---------- TAB: MATRIX ----------
 function renderMatrix(){var T=teamData();var pts=(ST.mmode!=='count');var data=pts?null:countMatrix(scope());
- var max=0;rowsShown(T).forEach(function(r){var w=pts?r.workload:(data[r.member]||{});['บันทึก','Infographic','VDO','checker','approval'].forEach(function(k){var v=(w[k]||0);if(v>max)max=v;});});
+ var max=0;rowsShown(T).forEach(function(r){var w=pts?r.workload:(data[r.member]||{});['บันทึก','Infographic','VDO','checker','approval','comm'].forEach(function(k){var v=(w[k]||0);if(v>max)max=v;});});
  function hm(v){if(!v)return '';var a=max?(0.12+0.55*v/max):0;return ' style="background:rgba(23,102,204,'+a.toFixed(2)+');color:'+(a>0.42?'#fff':'#13233a')+';font-weight:600;text-align:center"';}
  var h='<div class="panel"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">Workload Matrix <span class="wc-sub">member × media</span></h3><div class="row" style="gap:6px"><button class="ghost wc-mmode'+(pts?' primary':'')+'" data-mmode="points">Workload Points</button><button class="ghost wc-mmode'+(pts?'':' primary')+'" data-mmode="count">จำนวนงาน</button></div></div>';
- h+='<table class="table wc-t" style="margin-top:10px"><thead><tr><th>Member</th><th>บันทึก</th><th>Infographic</th><th>VDO</th><th>ตรวจ/อนุมัติ</th><th>อื่นๆ</th><th>รวม</th></tr></thead><tbody>';
- h+=rowsShown(T).map(function(r){var w=pts?r.workload:(data[r.member]||{'บันทึก':0,'Infographic':0,'VDO':0,checker:0,approval:0,total:0});return '<tr><td><b>'+E(r.member)+'</b></td><td'+hm(w['บันทึก'])+'>'+(w['บันทึก']||'')+'</td><td'+hm(w['Infographic'])+'>'+(w['Infographic']||'')+'</td><td'+hm(w['VDO'])+'>'+(w['VDO']||'')+'</td><td'+hm(w.checker)+'>'+(w.checker||'')+'</td><td'+hm(w.approval)+'>'+(w.approval||'')+'</td><td style="text-align:center"><b>'+(pts?r.workload.total:w.total)+'</b></td></tr>';}).join('');
+ h+='<table class="table wc-t" style="margin-top:10px"><thead><tr><th>Member</th><th>บันทึก</th><th>Infographic</th><th>VDO</th><th>ตรวจ/อนุมัติ</th><th>อื่นๆ</th><th>การสื่อสาร</th><th>รวม</th></tr></thead><tbody>';
+ h+=rowsShown(T).map(function(r){var w=pts?r.workload:(data[r.member]||{'บันทึก':0,'Infographic':0,'VDO':0,checker:0,approval:0,comm:0,total:0});return '<tr><td><b>'+E(r.member)+'</b></td><td'+hm(w['บันทึก'])+'>'+(w['บันทึก']||'')+'</td><td'+hm(w['Infographic'])+'>'+(w['Infographic']||'')+'</td><td'+hm(w['VDO'])+'>'+(w['VDO']||'')+'</td><td'+hm(w.checker)+'>'+(w.checker||'')+'</td><td'+hm(w.approval)+'>'+(w.approval||'')+'</td><td'+hm(w.comm)+'>'+(w.comm||'')+'</td><td style="text-align:center"><b>'+(pts?r.workload.total:w.total)+'</b></td></tr>';}).join('');
  h+='</tbody></table><div class="wc-legend">เข้ม = ภาระงานมาก · โหมด: '+(pts?'Workload Points (ถ่วงน้ำหนัก)':'จำนวนงาน')+'</div></div>';
  return h;
 }
@@ -182,7 +182,8 @@ function renderSettings(){var S=getS();var u=jload(WKEY,{})||{};var hist=jload(H
  h+='<h4 class="wc-h4">1. Media Score (Base × Standard Hours)</h4><table class="table wc-t"><thead><tr><th>ประเภท · รายละเอียด</th><th>Base</th><th>Std Hours</th></tr></thead><tbody>';
  MEDIA.forEach(function(m){Object.keys(S.media[m]).filter(function(k){return k!=='_default';}).forEach(function(k){var c=S.media[m][k];h+='<tr><td>'+E(m)+' · '+E(k)+'</td><td><input type="number" step="1" class="wc-mb" data-m="'+E(m)+'" data-k="'+E(k)+'" value="'+c.base+'"></td><td><input type="number" step="0.5" class="wc-mh" data-m="'+E(m)+'" data-k="'+E(k)+'" value="'+c.hrs+'"></td></tr>';});});
  h+='<tr><td>Checker</td><td><input type="number" class="wc-g" data-g="checkerBase" value="'+S.checkerBase+'"></td><td><input type="number" step="0.5" class="wc-g" data-g="checkerHrs" value="'+S.checkerHrs+'"></td></tr>';
- h+='<tr><td>Approval (เผยแพร่)</td><td><input type="number" class="wc-g" data-g="approvalBase" value="'+S.approvalBase+'"></td><td><input type="number" step="0.5" class="wc-g" data-g="approvalHrs" value="'+S.approvalHrs+'"></td></tr></tbody></table>';
+ h+='<tr><td>Approval (เผยแพร่)</td><td><input type="number" class="wc-g" data-g="approvalBase" value="'+S.approvalBase+'"></td><td><input type="number" step="0.5" class="wc-g" data-g="approvalHrs" value="'+S.approvalHrs+'"></td></tr>';
+ h+='<tr><td>การสื่อสาร (ผู้รับผิดชอบสื่อสาร)</td><td><input type="number" class="wc-g" data-g="commBase" value="'+S.commBase+'"></td><td><input type="number" step="0.5" class="wc-g" data-g="commHrs" value="'+S.commHrs+'"></td></tr></tbody></table>';
  // multipliers
  h+='<div class="wc-2col"><div><h4 class="wc-h4">2. Multipliers</h4><table class="table wc-t"><tbody>'
   +mulRow('Difficulty','difficulty',['Easy','Medium','Hard'],S)+mulRow('Importance','importance',['Normal','High','Critical'],S)+mulRow('Urgency','urgency',['Normal','Urgent','Emergency'],S)

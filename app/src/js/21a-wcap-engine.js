@@ -12,7 +12,7 @@
       "Infographic": { "มีPattern(บันทึก)": { base: 2, hrs: 2.0 }, "New Design": { base: 3, hrs: 4.0 }, "กระบวนการละเอียด": { base: 4, hrs: 6.0 }, "_default": { base: 2, hrs: 2.0 } },
       "VDO": { "Short Clip": { base: 3, hrs: 4.0 }, "Long Clip": { base: 5, hrs: 8.0 }, "ข้อมูลซับซ้อน": { base: 6, hrs: 10.0 }, "Editing": { base: 4, hrs: 4.0 }, "_default": { base: 3, hrs: 4.0 } }
     },
-    checkerBase: 1, checkerHrs: 0.5, approvalBase: 1, approvalHrs: 0.5,
+    checkerBase: 1, checkerHrs: 0.5, approvalBase: 1, approvalHrs: 0.5, commBase: 1, commHrs: 0.5,
     difficulty: { Easy: 1.00, Medium: 1.25, Hard: 1.50 },
     importance: { Normal: 1.00, High: 1.15, Critical: 1.30 },
     urgency: { Normal: 1.00, Urgent: 1.15, Emergency: 1.30 },
@@ -26,7 +26,7 @@
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
   function settings(user) { // shallow-merge user overrides onto DEFAULTS (one level + known subkeys)
     var S = clone(DEFAULTS); if (!user) return S;
-    ["checkerBase", "approvalBase", "checkerHrs", "approvalHrs"].forEach(function (k) { if (user[k] != null) S[k] = user[k]; });
+    ["checkerBase", "approvalBase", "checkerHrs", "approvalHrs", "commBase", "commHrs"].forEach(function (k) { if (user[k] != null) S[k] = user[k]; });
     if (user.media) { for (var m in user.media) { S.media[m] = S.media[m] || {}; for (var dk in user.media[m]) { S.media[m][dk] = Object.assign({}, S.media[m][dk] || {}, user.media[m][dk]); } } }
     ["difficulty", "importance", "urgency", "responsibility", "kpiWeights", "capacity", "statusThresholds"].forEach(function (k) {
       if (user[k]) { for (var kk in user[k]) S[k][kk] = user[k][kk]; }
@@ -54,6 +54,8 @@
     return out;
   }
   function supportList(t) { return (t.support || "").split(",").map(function (s) { return s.trim(); }).filter(Boolean); }
+  // ผู้รับผิดชอบในการสื่อสาร (commOwner) from the Task Board — array now, legacy comma-string tolerated.
+  function commList(t) { var c = t.commOwner; if (!c) return []; if (c.map) return c.map(function (s) { return String(s).trim(); }).filter(Boolean); return String(c).split(",").map(function (s) { return s.trim(); }).filter(Boolean); }
 
   // Job Workload for one media unit = Base x Difficulty x Importance x Urgency
   function jobUnitWorkload(S, t, unit) { return baseFor(S, unit.media, unit.detail) * mult(S, taskMods(t)); }
@@ -68,7 +70,7 @@
   // Per-member workload across a task set. Returns {member:{บันทึก,Infographic,VDO,checker,approval,total}}
   function memberWorkload(tasks, S) {
     S = S || DEFAULTS; var acc = {};
-    function ensure(p) { return acc[p] || (acc[p] = { "บันทึก": 0, "Infographic": 0, "VDO": 0, checker: 0, approval: 0, total: 0 }); }
+    function ensure(p) { return acc[p] || (acc[p] = { "บันทึก": 0, "Infographic": 0, "VDO": 0, checker: 0, approval: 0, comm: 0, total: 0 }); }
     tasks.forEach(function (t) {
       if (t.status === "Cancelled") return;
       var mu = mult(S, taskMods(t)), units = taskUnits(t), R = responsibility(S, t), mediaSeen = {};
@@ -80,8 +82,9 @@
       });
       if (t.checker) { var nC = Object.keys(mediaSeen).length || 1; var cv = S.checkerBase * mu * nC; var a = ensure(t.checker); a.checker += cv; a.total += cv; }
       if (t.approver) { var av = S.approvalBase * mu; var b = ensure(t.approver); b.approval += av; b.total += av; }
+      commList(t).forEach(function (cp) { var cw = S.commBase * mu; var a = ensure(cp); a.comm += cw; a.total += cw; }); // each comm owner credited in full
     });
-    for (var p in acc) { MEDIA.forEach(function (m) { acc[p][m] = round1(acc[p][m]); }); acc[p].checker = round1(acc[p].checker); acc[p].approval = round1(acc[p].approval); acc[p].total = round1(acc[p].total); }
+    for (var p in acc) { MEDIA.forEach(function (m) { acc[p][m] = round1(acc[p][m]); }); acc[p].checker = round1(acc[p].checker); acc[p].approval = round1(acc[p].approval); acc[p].comm = round1(acc[p].comm); acc[p].total = round1(acc[p].total); }
     return acc;
   }
 
@@ -119,6 +122,7 @@
     units.forEach(function (u) { ms[u.media] = 1; h += hrsFor(S, u.media, u.detail) * mu; });
     if (t.checker) h += (S.checkerHrs || 0) * mu * (Object.keys(ms).length || 1);
     if (t.approver) h += (S.approvalHrs || 0) * mu;
+    h += (S.commHrs || 0) * mu * commList(t).length; // comm owners each add their standard hours
     return round1(h);
   }
   function ownedCompleted(tasks, member) {
@@ -161,7 +165,7 @@
     var nMonths = months.length || 1;
     var wl = memberWorkload(tasks, S), rows = [];
     people.forEach(function (p) {
-      var w = wl[p] || { "บันทึก": 0, "Infographic": 0, "VDO": 0, checker: 0, approval: 0, total: 0 };
+      var w = wl[p] || { "บันทึก": 0, "Infographic": 0, "VDO": 0, checker: 0, approval: 0, comm: 0, total: 0 };
       var lv = months.length ? months.reduce(function (s, m) { return s + leaveDays(leaveReqs, p, m, leaveSettings); }, 0) : leaveDays(leaveReqs, p, null, leaveSettings);
       var cap = capacity(p, S, lv, nMonths);
       var util = utilization(w.total, cap.points);
@@ -183,8 +187,8 @@
 
   // Workload by media type (team) for the Overview donut
   function mediaBreakdown(tasks, S) {
-    var wl = memberWorkload(tasks, S), agg = { "บันทึก": 0, "Infographic": 0, "VDO": 0, checker: 0, approval: 0 };
-    for (var p in wl) { ["บันทึก", "Infographic", "VDO", "checker", "approval"].forEach(function (k) { agg[k] += wl[p][k]; }); }
+    var wl = memberWorkload(tasks, S), agg = { "บันทึก": 0, "Infographic": 0, "VDO": 0, checker: 0, approval: 0, comm: 0 };
+    for (var p in wl) { ["บันทึก", "Infographic", "VDO", "checker", "approval", "comm"].forEach(function (k) { agg[k] += wl[p][k]; }); }
     for (var k in agg) agg[k] = round1(agg[k]);
     return agg;
   }
@@ -202,7 +206,7 @@
 
   return {
     DEFAULTS: DEFAULTS, settings: settings, MEDIA: MEDIA,
-    taskMods: taskMods, mult: mult, baseFor: baseFor, hrsFor: hrsFor, taskUnits: taskUnits, supportList: supportList,
+    taskMods: taskMods, mult: mult, baseFor: baseFor, hrsFor: hrsFor, taskUnits: taskUnits, supportList: supportList, commList: commList,
     jobUnitWorkload: jobUnitWorkload, responsibility: responsibility, plannedHours: plannedHours,
     memberWorkload: memberWorkload, leaveDays: leaveDays, capacity: capacity, utilization: utilization, loadStatus: loadStatus,
     productivity: productivity, kpi: kpi, grade: grade, team: team, mediaBreakdown: mediaBreakdown, trend: trend, round1: round1
