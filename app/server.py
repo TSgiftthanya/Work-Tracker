@@ -513,7 +513,7 @@ def line_send_targets(text, targets):
 def is_admin(user):
     return bool(user) and bool(re.search(r'(manager|admin|ผู้ดูแล|ผู้จัดการ)', (user.get('role') or ''), re.I))
 
-BOOT=('<script>window.__WT_USER__=%s;window.__WT_STATE__=%s;(function(){var cache=Object.assign({},window.__WT_STATE__||{});'
+BOOT=('<script>window.__WT_PREVIEW__=%s;window.__WT_USER__=%s;window.__WT_STATE__=%s;(function(){var cache=Object.assign({},window.__WT_STATE__||{});'
  'function save(k,v){fetch("/api/state?key="+encodeURIComponent(k),{method:"POST",body:v}).catch(function(){});}'
  'var shim={getItem:function(k){return Object.prototype.hasOwnProperty.call(cache,k)?cache[k]:null;},'
  'setItem:function(k,v){cache[k]=String(v);if(typeof MK!=="undefined"&&MK[k]){collSave(k);}else{save(k,String(v));}},'
@@ -580,7 +580,8 @@ class H(BaseHTTPRequestHandler):
                 return self._send(302,'', 'text/plain', extra=[('Location','/login')])
             try: html=open(TEMPLATE,encoding='utf-8').read()
             except Exception as e: return self._send(500,str(e),'text/plain; charset=utf-8')
-            html=html.replace('<!--WT_BOOT-->', BOOT % (json.dumps(user,ensure_ascii=False), json.dumps(jread(DATA_FILE,{}),ensure_ascii=False)), 1)
+            preview=not bool(get_config().get('data_csv_url'))  # sample/preview mode = no task-data Sheet linked yet
+            html=html.replace('<!--WT_BOOT-->', BOOT % (json.dumps(preview), json.dumps(user,ensure_ascii=False), json.dumps(jread(DATA_FILE,{}),ensure_ascii=False)), 1)
             return self._send(200,html,'text/html; charset=utf-8',extra=[('Cache-Control','no-store, no-cache, must-revalidate'),('Pragma','no-cache')])
         if path=='/api/health': return self._json(200,{'ok':True})
         if path=='/api/line/status':
