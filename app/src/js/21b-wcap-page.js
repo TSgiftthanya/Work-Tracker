@@ -152,10 +152,10 @@ function renderCapacity(){var S=getS(),cv=ST.capView||'month';
 }
 // ---------- TAB: KPI ----------
 function renderKPI(){var T=teamData(),S=getS();
- var h='<div class="panel"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><h3 style="margin:0">KPI Performance</h3><span class="wc-sub">Prod '+S.kpiWeights.productivity+' · Time '+S.kpiWeights.timeliness+' · Qual '+S.kpiWeights.quality+' · Own '+S.kpiWeights.ownership+' · N/A re-normalised (ไม่ให้ 0 อัตโนมัติ)</span></div>';
- h+='<table class="table wc-t" style="margin-top:10px"><thead><tr><th>Member</th><th>Productivity</th><th>Timeliness</th><th>Quality</th><th>Ownership</th><th>Total /100</th><th>Grade</th></tr></thead><tbody>';
+ var h='<div class="panel"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><h3 style="margin:0">KPI Performance</h3><span class="wc-sub">Prod '+S.kpiWeights.productivity+' · Time '+S.kpiWeights.timeliness+' · Qual '+S.kpiWeights.quality+' · Other '+S.kpiWeights.ownership+' · N/A re-normalised (ไม่ให้ 0 อัตโนมัติ)</span></div>';
+ h+='<table class="table wc-t" style="margin-top:10px"><thead><tr><th>Member</th><th>Productivity</th><th>Timeliness</th><th>Quality</th><th>Overview (Other)</th><th>Total /100</th><th>Grade</th></tr></thead><tbody>';
  h+=rowsShown(T).map(function(r){var k=r.kpi;return '<tr class="wc-kpirow" data-m="'+E(r.member)+'"><td><b>'+E(r.member)+'</b></td><td style="text-align:center">'+NA(k.productivity)+'</td><td style="text-align:center">'+NA(k.timeliness)+'</td><td style="text-align:center">'+NA(k.quality)+'</td><td style="text-align:center">'+NA(k.ownership)+'</td><td style="text-align:center"><b>'+NA(k.total)+'</b></td><td>'+(k.total==null?'<span class="wc-na">N/A</span>':'<span class="pill wc-bl">'+E(r.grade)+'</span>')+'</td></tr>';}).join('');
- h+='</tbody></table><div class="wc-legend">คลิกชื่อสมาชิกเพื่อบันทึก Performance Log (ชั่วโมงจริง · คะแนนความถูกต้องแม่นยำ · Ownership) ที่ปลดล็อก Productivity · Quality · Ownership</div></div>';
+ h+='</tbody></table><div class="wc-legend">คลิกชื่อสมาชิกเพื่อบันทึก Performance Log (ชั่วโมงจริง · คะแนนความถูกต้องแม่นยำ · Overview (Other)) ที่ปลดล็อก Productivity · Quality · Overview (Other)</div></div>';
  if(ST.drill){var m=ST.drill;var pf=PERF();var comp=scope().filter(function(t){return t.status==='Completed'&&(t.lead===m||(t.types||[]).some(function(u){return u&&u.owner===m;}));});
   var om=OWNS()[m+'|'+curYM()]||{};var qm=QUALS()[m+'|'+curYM()]||{};
   h+='<div class="panel"><h3>Performance Log · '+E(m)+' · '+curYM()+' <span class="wc-sub">('+comp.length+' งานที่เสร็จ)</span></h3>';
@@ -166,9 +166,9 @@ function renderKPI(){var T=teamData(),S=getS();
   h+='<h4 class="wc-h4" style="margin-top:14px">Quality · ความถูกต้องแม่นยำ (ผู้จัดการประเมิน) · ถ่วงน้ำหนัก '+getS().kpiWeights.quality+'%</h4>';
   h+='<div class="wc-form"><label>Score (0–100)<input type="number" min="0" max="100" id="wc_qual" value="'+(qm.score!=null?qm.score:'')+'"></label><label style="flex:1;min-width:220px">หลักฐาน/เหตุผล (Evidence)<input type="text" id="wc_qual_note" value="'+E(qm.note||'')+'" placeholder="เช่น งานถูกต้องครบถ้วน ไม่มีข้อผิดพลาด / มีจุดต้องแก้เล็กน้อย"></label></div>';
   h+='<div class="row" style="gap:8px;margin-top:8px"><button class="primary" id="wc_qual_save">บันทึก Quality</button>'+(qm.by?'<span class="wc-sub">ล่าสุดโดย '+E(qm.by)+' · '+E((qm.at||'').slice(0,10))+'</span>':'<span class="wc-sub">ให้คะแนนความถูกต้องแม่นยำของงานในเดือนนี้ (0–100)</span>')+'</div>';
-  h+='<h4 class="wc-h4" style="margin-top:14px">Ownership (ผู้จัดการประเมิน) · ถ่วงน้ำหนัก '+getS().kpiWeights.ownership+'%</h4>';
+  h+='<h4 class="wc-h4" style="margin-top:14px">Overview (Other) · ถ่วงน้ำหนัก '+getS().kpiWeights.ownership+'%</h4>';
   h+='<div class="wc-form"><label>Score (0–100)<input type="number" min="0" max="100" id="wc_own" value="'+(om.score!=null?om.score:'')+'"></label><label style="flex:1;min-width:220px">หลักฐาน/เหตุผล (Evidence)<input type="text" id="wc_own_note" value="'+E(om.note||'')+'" placeholder="เช่น รับงานด่วนแทนทีม, แก้ปัญหาเชิงรุก"></label></div>';
-  h+='<div class="row" style="gap:8px;margin-top:8px"><button class="primary" id="wc_own_save">บันทึก Ownership</button>'+(om.by?'<span class="wc-sub">ล่าสุดโดย '+E(om.by)+' · '+E((om.at||'').slice(0,10))+'</span>':'<span class="wc-sub">ให้คะแนนพร้อมหลักฐานเพื่อความเป็นธรรม</span>')+'</div>';
+  h+='<div class="row" style="gap:8px;margin-top:8px"><button class="primary" id="wc_own_save">บันทึก Overview (Other)</button>'+(om.by?'<span class="wc-sub">ล่าสุดโดย '+E(om.by)+' · '+E((om.at||'').slice(0,10))+'</span>':'<span class="wc-sub">ให้คะแนนพร้อมหลักฐานเพื่อความเป็นธรรม</span>')+'</div>';
   h+='</div>';
  }
  return h;
@@ -190,7 +190,7 @@ function renderSettings(){var S=getS();var u=jload(WKEY,{})||{};var hist=jload(H
   +'</tbody></table></div>';
  // kpi weights + capacity
  h+='<div><h4 class="wc-h4">3. KPI Weights <span class="wc-sub" id="wc_kwsum" style="color:'+(kwSum===100?'#2e7d4f':'#c0392b')+'">(รวม '+kwSum+'%)</span></h4><table class="table wc-t"><tbody>'
-  +['productivity','timeliness','quality','ownership'].map(function(k){return '<tr><td>'+k+'</td><td><input type="number" class="wc-kw" data-k="'+k+'" value="'+kw[k]+'">%</td></tr>';}).join('')
+  +['productivity','timeliness','quality','ownership'].map(function(k){var KWLAB={productivity:'productivity',timeliness:'timeliness',quality:'quality',ownership:'Overview (Other)'};return '<tr><td>'+(KWLAB[k]||k)+'</td><td><input type="number" class="wc-kw" data-k="'+k+'" value="'+kw[k]+'">%</td></tr>';}).join('')
   +'</tbody></table>'
   +'<h4 class="wc-h4">4. Capacity & Thresholds</h4><table class="table wc-t"><tbody>'
   +'<tr><td>Benchmark (pt/hr)</td><td><input type="number" step="0.025" class="wc-c" data-c="benchmark" value="'+S.capacity.benchmark+'"></td></tr>'
@@ -226,7 +226,7 @@ function bindBody(){
  // performance log capture (actual hours)
  document.querySelectorAll('.wc-perf').forEach(function(e){e.onchange=function(){var pf=PERF(),id=e.dataset.id;pf[id]=pf[id]||{};if(e.value===''){delete pf[id][e.dataset.f];}else{pf[id][e.dataset.f]=+e.value;}if(!Object.keys(pf[id]).length)delete pf[id];jsave(PKEY,pf);audit('perf-log',id+'·'+e.dataset.f+'='+e.value);renderWC();};});
  if(g('wc_qual_save'))g('wc_qual_save').onclick=function(){var o=QUALS(),key=ST.drill+'|'+curYM(),sc=g('wc_qual').value;if(sc===''){delete o[key];}else{o[key]={score:Math.max(0,Math.min(100,Math.round(+sc))),note:g('wc_qual_note').value||'',by:ME(),at:new Date().toISOString()};}jsave(QKEY,o);audit('quality',key+'='+sc);if(typeof notify==='function')notify('บันทึก Quality '+ST.drill+' แล้ว');renderWC();};
- if(g('wc_own_save'))g('wc_own_save').onclick=function(){var o=OWNS(),key=ST.drill+'|'+curYM(),sc=g('wc_own').value;if(sc===''){delete o[key];}else{o[key]={score:Math.max(0,Math.min(100,Math.round(+sc))),note:g('wc_own_note').value||'',by:ME(),at:new Date().toISOString()};}jsave(OKEY,o);audit('ownership',key+'='+sc);if(typeof notify==='function')notify('บันทึก Ownership '+ST.drill+' แล้ว');renderWC();};
+ if(g('wc_own_save'))g('wc_own_save').onclick=function(){var o=OWNS(),key=ST.drill+'|'+curYM(),sc=g('wc_own').value;if(sc===''){delete o[key];}else{o[key]={score:Math.max(0,Math.min(100,Math.round(+sc))),note:g('wc_own_note').value||'',by:ME(),at:new Date().toISOString()};}jsave(OKEY,o);audit('ownership',key+'='+sc);if(typeof notify==='function')notify('บันทึก Overview (Other) '+ST.drill+' แล้ว');renderWC();};
  // version restore
  document.querySelectorAll('.wc-restore').forEach(function(b){b.onclick=function(){var hh=jload(HKEY,[])||[],v=hh[+b.dataset.i];if(!v||!v.settings)return;if(!window.confirm('คืนค่า Scoring Settings เป็นเวอร์ชัน Effective '+(v.effective||'—')+'?\\n(ค่าปัจจุบันจะถูกแทนที่)'))return;jsave(WKEY,v.settings);audit('restore',v.effective||'');if(typeof notify==='function')notify('คืนค่าเวอร์ชัน '+(v.effective||'')+' แล้ว');renderWC();};});
  // settings inputs -> live update
@@ -247,7 +247,7 @@ function exportReport(){var T=teamData();var S=getS();
  function tr(cells){return '<tr>'+cells.map(function(c){return '<td>'+c+'</td>';}).join('')+'</tr>';}
  var body='<h2>Team Overview — '+curYM()+'</h2><p>Workload '+T.totalWorkload+' · Capacity '+T.totalCapacity+' · Utilization '+(T.avgUtilization==null?'N/A':T.avgUtilization+'%')+' · KPI avg '+(T.avgKpi==null?'N/A':T.avgKpi)+' · Overloaded '+T.overloaded+' · Overdue '+T.overdue+'</p>';
  function na(x){return x==null?'N/A':x;}
- body+='<h2>Capacity & KPI by member</h2><table><thead><tr><th>Member</th><th>Workload</th><th>Capacity</th><th>Util</th><th>Status</th><th>Prod</th><th>Time</th><th>Qual</th><th>Own</th><th>KPI</th><th>Grade</th></tr></thead><tbody>'+rowsShown(T).map(function(r){return tr([r.member,r.workload.total,r.capacity.points,(r.utilization==null?'—':r.utilization+'%'),r.status,na(r.kpi.productivity),na(r.kpi.timeliness),na(r.kpi.quality),na(r.kpi.ownership),na(r.kpi.total),(r.kpi.total==null?'N/A':r.grade)]);}).join('')+'</tbody></table>';
+ body+='<h2>Capacity & KPI by member</h2><table><thead><tr><th>Member</th><th>Workload</th><th>Capacity</th><th>Util</th><th>Status</th><th>Prod</th><th>Time</th><th>Qual</th><th>Other</th><th>KPI</th><th>Grade</th></tr></thead><tbody>'+rowsShown(T).map(function(r){return tr([r.member,r.workload.total,r.capacity.points,(r.utilization==null?'—':r.utilization+'%'),r.status,na(r.kpi.productivity),na(r.kpi.timeliness),na(r.kpi.quality),na(r.kpi.ownership),na(r.kpi.total),(r.kpi.total==null?'N/A':r.grade)]);}).join('')+'</tbody></table>';
  var doc='<!doctype html><meta charset=utf-8><title>Workload & Capacity Report</title><style>body{font-family:system-ui,"Noto Sans Thai",sans-serif;max-width:820px;margin:20px auto;padding:0 16px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:6px 10px;font-size:13px}h2{border-bottom:2px solid #1766cc;padding-bottom:4px}</style><h1>Workload & Capacity & KPI Report</h1>'+body;
  var b=new Blob([doc],{type:'text/html;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='workload-report-'+curYM()+'.html';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);if(typeof notify==='function')notify('Export รายงานแล้ว');}
 
