@@ -12,13 +12,13 @@ function T(){return (typeof tasks!=='undefined'&&tasks)?tasks:[];}
 function mediaOf(k){return k==='detail_note'?'บันทึก':k==='detail_info'?'Infographic':k==='detail_vdo'?'VDO':null;}
 function useCount(key,val){var m=mediaOf(key),n=0;T().forEach(function(t){
  if(key==='priority'){if(t.priority===val)n++;}
- else if(key==='people'){var hit=(t.lead===val||t.checker===val||t.approver===val);if(!hit&&t.support)hit=t.support.split(',').map(function(x){return x.trim();}).indexOf(val)>=0;if(!hit&&t.types)hit=t.types.some(function(x){return x&&x.owner===val;});if(hit)n++;}
+ else if(key==='people'){var hit=(t.lead===val||t.checker===val||t.approver===val||t.commOwner===val);if(!hit&&t.support)hit=t.support.split(',').map(function(x){return x.trim();}).indexOf(val)>=0;if(!hit&&t.types)hit=t.types.some(function(x){return x&&x.owner===val;});if(hit)n++;}
  else if(key==='channels'){if(t.channels&&t.channels.indexOf(val)>=0)n++;}
  else if(m){if(t.types&&t.types.some(function(x){return x&&x.type===m&&(x.detail||'')===val;}))n++;}});return n;}
 function renameVal(key,old,nw){var s=all(),arr=s[key]||[],i=arr.indexOf(old);if(i<0)return;arr[i]=nw;save(s);sync();var m=mediaOf(key);
  T().forEach(function(t){
   if(key==='priority'){if(t.priority===old)t.priority=nw;}
-  else if(key==='people'){if(t.lead===old)t.lead=nw;if(t.checker===old)t.checker=nw;if(t.approver===old)t.approver=nw;if(t.support)t.support=t.support.split(',').map(function(x){return x.trim();}).map(function(x){return x===old?nw:x;}).filter(Boolean).join(', ');if(t.types)t.types.forEach(function(x){if(x&&x.owner===old)x.owner=nw;});}
+  else if(key==='people'){if(t.lead===old)t.lead=nw;if(t.checker===old)t.checker=nw;if(t.approver===old)t.approver=nw;if(t.commOwner===old)t.commOwner=nw;if(t.support)t.support=t.support.split(',').map(function(x){return x.trim();}).map(function(x){return x===old?nw:x;}).filter(Boolean).join(', ');if(t.types)t.types.forEach(function(x){if(x&&x.owner===old)x.owner=nw;});}
   else if(key==='channels'){if(t.channels)t.channels=t.channels.map(function(x){return x===old?nw:x;});}
   else if(m){if(t.types)t.types.forEach(function(x){if(x&&x.type===m&&(x.detail||'')===old)x.detail=nw;});}});
  if(typeof persist==='function')persist();}
