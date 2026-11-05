@@ -82,8 +82,13 @@
       return (x.type||'')+(x.owner?(': '+x.owner):'')+(x.detail?(' ('+x.detail+')'):'');
     }).filter(Boolean).join(', ');
   }
+  function arrStr(v){
+    if(v==null)return '';
+    if(v.join)return v.join(', ');
+    return String(v);
+  }
   function buildRows(list){
-    var H=['ID','ชื่องาน','ประเภทการสื่อสาร','Project','สถานะ','ความสำคัญ','ผู้รับผิดชอบหลัก','ผู้ร่วมงาน','ผู้รับผิดชอบรายประเภท','Checker / ผู้ตรวจ','ผู้อนุมัติ / เผยแพร่','กำหนดส่ง (Due)','วันเผยแพร่','วันเสร็จสิ้น','Brief'];
+    var H=['ID','ชื่องาน','ประเภทการสื่อสาร','Project','สถานะ','ความสำคัญ','ผู้รับผิดชอบหลัก','ผู้ร่วมงาน','ผู้รับผิดชอบรายประเภท','Checker / ผู้ตรวจ','ผู้อนุมัติ / เผยแพร่','กำหนดส่ง (Due)','วันเผยแพร่','วันเสร็จสิ้น','Brief','ช่องทางการสื่อสาร','ผู้รับผิดชอบในการสื่อสาร'];
     var rows=[H];
     list=list||[];
     for(var i=0;i<list.length;i++){
@@ -91,7 +96,8 @@
       rows.push([
         t.id,t.title,t.comm,t.project,statusTH(t.status),t.priority,
         t.lead,t.support,typesStr(t),t.checker,t.approver,
-        t.due,t.publish,t.completed,t.brief
+        t.due,t.publish,t.completed,t.brief,
+        arrStr(t.channels),arrStr(t.commOwner)
       ]);
     }
     return rows;
