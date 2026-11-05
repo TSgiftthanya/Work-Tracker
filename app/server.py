@@ -10,7 +10,7 @@ STATE_LOCK=threading.RLock()
 DATA_FILE=os.path.join(DATA_DIR,'data.json')
 HIST_FILE=os.path.join(DATA_DIR,'task_history.json')  # shared task change-history (team-wide)
 # shared, id-keyed collections that use atomic per-item merge (no whole-blob last-write-wins)
-COLL_KEYS={'worktracker-commplan-v1','worktracker-projteams-v1','worktracker-proj-archived-v1'}
+COLL_KEYS={'worktracker-commplan-v1','worktracker-projteams-v1','worktracker-proj-archived-v1','worktracker-proj-purged-v1'}
 USERS_FILE=os.path.join(DATA_DIR,'users.json')
 CONFIG_FILE=os.path.join(DATA_DIR,'config.json')
 TEMPLATE=os.path.join(BASE,'index.html')
@@ -518,7 +518,7 @@ BOOT=('<script>window.__WT_USER__=%s;window.__WT_STATE__=%s;(function(){var cach
  'key:function(i){return Object.keys(cache)[i]||null;}};'
  'try{Object.defineProperty(shim,"length",{get:function(){return Object.keys(cache).length;}});}catch(e){}'
  'try{Object.defineProperty(window,"localStorage",{configurable:true,value:shim});}catch(e){try{window.localStorage=shim;}catch(_){}}'
- 'var MK={"worktracker-commplan-v1":{idf:"cid",rf:"renderCP"},"worktracker-projteams-v1":{idf:"name",rf:"render"},"worktracker-proj-archived-v1":{idf:"",rf:"render"}};'
+ 'var MK={"worktracker-commplan-v1":{idf:"cid",rf:"renderCP"},"worktracker-projteams-v1":{idf:"name",rf:"render"},"worktracker-proj-archived-v1":{idf:"",rf:"render"},"worktracker-proj-purged-v1":{idf:"",rf:"render"}};'
  'var crev={},cbase={};'
  'function cidof(idf,x){return idf?(x&&x[idf]):x;}'
  'function csnap(k){var m={};try{var a=JSON.parse(cache[k]||"[]");if(a&&a.length!==undefined){for(var i=0;i<a.length;i++){var id=cidof(MK[k].idf,a[i]);if(id!=null)m[String(id)]=JSON.stringify(a[i]);}}}catch(e){}cbase[k]=m;}'
