@@ -129,13 +129,14 @@ def parse_token(tok):
     except Exception: return None
 
 def authenticate(ident,code):
-    # login identifier = email (primary); name kept as fallback so no one is locked out
+    # login identifier = email ONLY (name fallback removed — rows without an email cannot log in)
     ident=(ident or '').strip(); code=(code or '').strip()
     if not ident or not code: return None
     il=ident.lower()
     for u in get_users():
         if str(u.get('code','')).strip()!=code: continue
-        if (str(u.get('email','')).strip().lower()==il) or (str(u.get('name','')).strip().lower()==il):
+        em=str(u.get('email','')).strip().lower()
+        if em and em==il:
             return u
     return None
 
