@@ -128,11 +128,14 @@ def parse_token(tok):
         return {'name':p['n'],'team':p.get('t',''),'role':p.get('r','')}
     except Exception: return None
 
-def authenticate(name,code):
-    name=(name or '').strip(); code=(code or '').strip()
-    if not name or not code: return None
+def authenticate(ident,code):
+    # login identifier = email (primary); name kept as fallback so no one is locked out
+    ident=(ident or '').strip(); code=(code or '').strip()
+    if not ident or not code: return None
+    il=ident.lower()
     for u in get_users():
-        if (u.get('name','').strip().lower()==name.lower()) and (str(u.get('code','')).strip()==code):
+        if str(u.get('code','')).strip()!=code: continue
+        if (str(u.get('email','')).strip().lower()==il) or (str(u.get('name','')).strip().lower()==il):
             return u
     return None
 
@@ -591,7 +594,7 @@ class H(BaseHTTPRequestHandler):
         if path=='/api/meta':
             src=user_source(); out={'source':src,'sheet_configured':bool(get_config().get('users_csv_url')),'count':len(get_users())}
             if src=='demo':
-                out['demo_users']=[{'name':x['name'],'code':x['code'],'role':x['role']} for x in get_users()]
+                out['demo_users']=[{'name':x['name'],'email':x.get('email',''),'code':x['code'],'role':x['role']} for x in get_users()]
             return self._json(200,out)
         if path=='/api/session':
             user=self._user()
@@ -644,7 +647,7 @@ class H(BaseHTTPRequestHandler):
         u=urlparse(self.path); path=u.path
         if path=='/api/login':
             b=self._bjson(); usr=authenticate(b.get('name'),b.get('code'))
-            if not usr: return self._json(401,{'ok':False,'error':'ไม่พบชื่อผู้ใช้ หรือรหัสไม่ถูกต้อง'})
+            if not usr: return self._json(401,{'ok':False,'error':'ไม่พบอีเมล หรือรหัสไม่ถูกต้อง'})
             tok=make_token(usr)
             ck='%s=%s; Path=/; HttpOnly; SameSite=Lax; Max-Age=%d'%(COOKIE,tok,TTL)
             return self._json(200,{'ok':True,'user':{'name':usr['name'],'team':usr.get('team',''),'role':usr.get('role','')}},extra=[('Set-Cookie',ck)])

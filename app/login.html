@@ -29,8 +29,8 @@ code{background:#eef4fc;padding:1px 6px;border-radius:5px;color:#0f4fa6}
   <h1>เข้าสู่ระบบ</h1>
   <div class="sub">ตรวจสิทธิ์จากรายชื่อทีมที่นำเข้าจาก Google Sheet</div>
   <form id="form">
-    <label for="name">ชื่อผู้ใช้</label>
-    <input id="name" autocomplete="username" placeholder="ชื่อตามตารางสิทธิ์ทีม" required>
+    <label for="name">อีเมล</label>
+    <input id="name" type="email" autocomplete="username email" placeholder="อีเมลตามตารางสิทธิ์ทีม" required>
     <label for="code">รหัสเข้าสู่ระบบ</label>
     <input id="code" type="password" autocomplete="current-password" placeholder="รหัสของคุณ" required>
     <button class="btn" id="submit" type="submit">เข้าสู่ระบบ</button>
@@ -59,8 +59,8 @@ function loadMeta(){
     var demo=$('demo');
     if(d.source==='demo'&&d.demo_users){
       demo.classList.add('show');
-      demo.innerHTML='<b>โหมดตัวอย่าง — ยังไม่เชื่อม Google Sheet</b><br>ลองเข้าด้วยรหัสตัวอย่าง:<br>'+
-        d.demo_users.map(function(u){return '• '+u.name+' · <code>'+u.code+'</code> ('+u.role+')';}).join('<br>');
+      demo.innerHTML='<b>โหมดตัวอย่าง — ยังไม่เชื่อม Google Sheet</b><br>ลองเข้าด้วยอีเมลตัวอย่าง:<br>'+
+        d.demo_users.map(function(u){return '• '+(u.email||u.name)+' · <code>'+u.code+'</code> ('+u.role+')';}).join('<br>');
     } else { demo.classList.remove('show'); }
   }).catch(function(){});
 }
