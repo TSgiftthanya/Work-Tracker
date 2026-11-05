@@ -131,36 +131,32 @@
     if (!n || actual <= 0) return null;
     return Math.min(100, Math.round(100 * planned / actual));
   }
-  // Quality = first-pass rate (revisions = 0) over completed tasks that have revision data. N/A if none logged.
-  function quality(tasks, member, S) {
-    var comp = ownedCompleted(tasks, member), tot = 0, fp = 0;
-    comp.forEach(function (t) { if (t.revisions != null && t.revisions !== "") { tot++; if (+t.revisions <= 0) fp++; } });
-    if (!tot) return null;
-    return Math.round(100 * fp / tot);
-  }
+  // Quality is no longer derived from task revisions — it is a direct manager score 0..100
+  // per member/month, passed into kpi() (see the qual arg). Nothing to compute here.
 
   // KPI — honest: computes what data supports, marks the rest N/A, re-normalises weights (never auto-zero).
-  // own = manager Ownership rubric score 0..100 (or null/"" -> N/A).
-  function kpi(tasks, member, S, own) {
+  // own  = manager Ownership rubric score 0..100 (or null/"" -> N/A).
+  // qual = manager "ความถูกต้องแม่นยำ" score 0..100 per member/month (or null/"" -> N/A).
+  function kpi(tasks, member, S, own, qual) {
     S = S || DEFAULTS;
     var mine = tasks.filter(function (t) { return t.lead === member || (t.types || []).some(function (u) { return u && u.owner === member; }); });
     var comp = mine.filter(function (t) { return t.status === "Completed"; });
     var timeliness = null;
     if (comp.length) { var w = 0, ok = 0; comp.forEach(function (t) { var ww = 1; w += ww; var dlv = t.completed || t.publish || ""; if (t.due && dlv && dlv <= t.due) ok += ww; }); timeliness = Math.round(100 * ok / w); }
     var prod = productivity(tasks, member, S);
-    var qual = quality(tasks, member, S);
+    var qualSc = (qual != null && qual !== "") ? Math.max(0, Math.min(100, Math.round(+qual))) : null;
     var ownership = (own != null && own !== "") ? Math.max(0, Math.min(100, Math.round(+own))) : null;
-    var parts = [["productivity", prod], ["timeliness", timeliness], ["quality", qual], ["ownership", ownership]];
+    var parts = [["productivity", prod], ["timeliness", timeliness], ["quality", qualSc], ["ownership", ownership]];
     var wsum = 0, sc = 0, avail = [], na = [];
     parts.forEach(function (p) { if (p[1] != null) { var wt = S.kpiWeights[p[0]] || 0; wsum += wt; sc += p[1] * wt; avail.push(p[0]); } else na.push(p[0]); });
     var total = wsum ? Math.round(sc / wsum) : null;
-    return { productivity: prod, timeliness: timeliness, quality: qual, ownership: ownership, total: total, available: avail, na: na, completed: comp.length };
+    return { productivity: prod, timeliness: timeliness, quality: qualSc, ownership: ownership, total: total, available: avail, na: na, completed: comp.length };
   }
   function grade(total, S) { if (total == null) return "N/A"; var g = (S || DEFAULTS).grades; for (var i = 0; i < g.length; i++) if (total >= g[i].min) return g[i].label; return g[g.length - 1].label; }
 
   // Team roll-up for Overview. ym = "YYYY-MM" | ["YYYY-MM", …] | null. ownStore = {member: ownershipScore} (optional).
-  function team(tasks, people, S, leaveReqs, ym, leaveSettings, ownStore) {
-    S = S || DEFAULTS; ownStore = ownStore || {};
+  function team(tasks, people, S, leaveReqs, ym, leaveSettings, ownStore, qualStore) {
+    S = S || DEFAULTS; ownStore = ownStore || {}; qualStore = qualStore || {};
     var months = Array.isArray(ym) ? ym.slice() : (ym ? [ym] : []);
     var nMonths = months.length || 1;
     var wl = memberWorkload(tasks, S), rows = [];
@@ -169,7 +165,7 @@
       var lv = months.length ? months.reduce(function (s, m) { return s + leaveDays(leaveReqs, p, m, leaveSettings); }, 0) : leaveDays(leaveReqs, p, null, leaveSettings);
       var cap = capacity(p, S, lv, nMonths);
       var util = utilization(w.total, cap.points);
-      var k = kpi(tasks, p, S, ownStore[p] != null ? ownStore[p] : null);
+      var k = kpi(tasks, p, S, ownStore[p] != null ? ownStore[p] : null, qualStore[p] != null ? qualStore[p] : null);
       rows.push({ member: p, workload: w, capacity: cap, utilization: util, status: loadStatus(util, S), kpi: k, grade: grade(k.total, S) });
     });
     var totW = rows.reduce(function (s, r) { return s + r.workload.total; }, 0);
@@ -195,11 +191,11 @@
 
   // Per-month team roll-up for trend charts. months = ["2026-05", …] (ascending).
   // ownStoreByYm = {ym:{member:score}} (optional). Each month's scope = tasks whose due/publish is in that month.
-  function trend(tasks, people, S, leaveReqs, months, leaveSettings, ownStoreByYm) {
-    S = S || DEFAULTS; ownStoreByYm = ownStoreByYm || {};
+  function trend(tasks, people, S, leaveReqs, months, leaveSettings, ownStoreByYm, qualStoreByYm) {
+    S = S || DEFAULTS; ownStoreByYm = ownStoreByYm || {}; qualStoreByYm = qualStoreByYm || {};
     return (months || []).map(function (ym) {
       var scoped = tasks.filter(function (t) { return t.status !== "Cancelled" && ((t.due && t.due.slice(0, 7) === ym) || (t.publish && t.publish.slice(0, 7) === ym)); });
-      var T = team(scoped, people, S, leaveReqs, ym, leaveSettings, ownStoreByYm[ym] || {});
+      var T = team(scoped, people, S, leaveReqs, ym, leaveSettings, ownStoreByYm[ym] || {}, qualStoreByYm[ym] || {});
       return { ym: ym, workload: T.totalWorkload, capacity: T.totalCapacity, utilization: T.avgUtilization, kpi: T.avgKpi, overloaded: T.overloaded, overdue: T.overdue };
     });
   }
@@ -209,6 +205,6 @@
     taskMods: taskMods, mult: mult, baseFor: baseFor, hrsFor: hrsFor, taskUnits: taskUnits, supportList: supportList,
     jobUnitWorkload: jobUnitWorkload, responsibility: responsibility, plannedHours: plannedHours,
     memberWorkload: memberWorkload, leaveDays: leaveDays, capacity: capacity, utilization: utilization, loadStatus: loadStatus,
-    productivity: productivity, quality: quality, kpi: kpi, grade: grade, team: team, mediaBreakdown: mediaBreakdown, trend: trend, round1: round1
+    productivity: productivity, kpi: kpi, grade: grade, team: team, mediaBreakdown: mediaBreakdown, trend: trend, round1: round1
   };
 });

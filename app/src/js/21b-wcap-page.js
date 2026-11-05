@@ -1,6 +1,6 @@
 (function(){
 // Workload & Capacity & KPI Workspace — UI (uses window.WCAP engine; SSOT = tasks/people/leave/DDget)
-var WKEY='worktracker-wcap-v1', HKEY='worktracker-wcap-history-v1', AKEY='worktracker-wcap-audit-v1', PKEY='worktracker-wcap-perf-v1', OKEY='worktracker-wcap-own-v1';
+var WKEY='worktracker-wcap-v1', HKEY='worktracker-wcap-history-v1', AKEY='worktracker-wcap-audit-v1', PKEY='worktracker-wcap-perf-v1', OKEY='worktracker-wcap-own-v1', QKEY='worktracker-wcap-qual-v1';
 function E(x){return (typeof esc==='function')?esc(x):String(x==null?'':x);}
 function g(id){return document.getElementById(id);}
 function jload(k,df){try{var s=JSON.parse(localStorage.getItem(k)||'null');return s==null?df:s;}catch(e){return df;}}
@@ -14,8 +14,10 @@ function LEAVE(){return jload('worktracker-leave-v1',[])||[];}
 function LSET(){return jload('worktracker-leave-settings-v1',{weekendOff:true,holidays:[]});}
 function PERF(){return jload(PKEY,{})||{};}
 function OWNS(){return jload(OKEY,{})||{};}
+function QUALS(){return jload(QKEY,{})||{};}
 function ownMap(ym){var o=OWNS(),m={};for(var k in o){var i=k.lastIndexOf('|');if(i>0&&k.slice(i+1)===ym&&o[k]&&o[k].score!=null)m[k.slice(0,i)]=+o[k].score;}return m;}
-function decorate(list){var pf=PERF();return list.map(function(t){var p=pf[t.id];if(!p)return t;var c=Object.assign({},t);if(p.actualHours!=null)c.actualHours=p.actualHours;if(p.revisions!=null)c.revisions=p.revisions;return c;});}
+function qualMap(ym){var o=QUALS(),m={};for(var k in o){var i=k.lastIndexOf('|');if(i>0&&k.slice(i+1)===ym&&o[k]&&o[k].score!=null)m[k.slice(0,i)]=+o[k].score;}return m;}
+function decorate(list){var pf=PERF();return list.map(function(t){var p=pf[t.id];if(!p)return t;var c=Object.assign({},t);if(p.actualHours!=null)c.actualHours=p.actualHours;return c;});}
 function ME(){return (window.__WT_USER__&&window.__WT_USER__.name)||'ผู้ใช้';}
 function audit(action,detail){var a=jload(AKEY,[]);if(!Array.isArray(a))a=[];a.unshift({at:new Date().toISOString(),by:ME(),action:action,detail:detail||''});jsave(AKEY,a.slice(0,300));}
 
@@ -31,7 +33,7 @@ function hasMedia(t){if(!ST.media)return true;var u=W().taskUnits(t);return u.so
 function scope(){return decorate(TASKS().filter(function(t){if(t.status==='Cancelled')return false;if(!inMonth(t))return false;if(ST.status&&t.status!==ST.status)return false;if(!hasMedia(t))return false;return true;}));}
 function allScoped(){return decorate(TASKS().filter(function(t){if(t.status==='Cancelled')return false;if(ST.status&&t.status!==ST.status)return false;if(!hasMedia(t))return false;return true;}));}
 function recentMonths(n){var d=new Date(curYM()+'-01T00:00:00'),out=[];for(var i=n-1;i>=0;i--){var x=new Date(d.getFullYear(),d.getMonth()-i,1);out.push(x.getFullYear()+'-'+('0'+(x.getMonth()+1)).slice(-2));}return out;}
-function teamData(){var s=selMonths();return W().team(scope(),PEOPLE(),getS(),LEAVE(),(s.length?s:curYM()),LSET(),ownMap(curYM()));}
+function teamData(){var s=selMonths();return W().team(scope(),PEOPLE(),getS(),LEAVE(),(s.length?s:curYM()),LSET(),ownMap(curYM()),qualMap(curYM()));}
 function rowsShown(T){return T.rows.filter(function(r){return !ST.member||r.member===ST.member;});}
 
 // media unit COUNT per member (for matrix count mode)
@@ -87,8 +89,8 @@ function renderOverview(){var T=teamData(),mb=W().mediaBreakdown(scope(),getS())
  h+='<div class="panel"><h3>Workload & KPI by Member</h3><table class="table wc-t"><thead><tr><th>Member</th><th>Workload</th><th>Util</th><th>KPI</th><th>Grade</th></tr></thead><tbody>'
   +rowsShown(T).map(function(r){return '<tr><td><b>'+E(r.member)+'</b></td><td style="text-align:center">'+r.workload.total+'</td><td style="text-align:center">'+(r.utilization==null?'—':r.utilization+'%')+'</td><td style="text-align:center">'+NA(r.kpi.total)+'</td><td>'+(r.kpi.total==null?'<span class="wc-na">N/A</span>':'<span class="pill wc-bl">'+E(r.grade)+'</span>')+'</td></tr>';}).join('')
   +'</tbody></table></div></div>';
- var months=recentMonths(6),ownBy={};months.forEach(function(ym){ownBy[ym]=ownMap(ym);});
- var tr=W().trend(allScoped(),PEOPLE(),getS(),LEAVE(),months,LSET(),ownBy);
+ var months=recentMonths(6),ownBy={},qualBy={};months.forEach(function(ym){ownBy[ym]=ownMap(ym);qualBy[ym]=qualMap(ym);});
+ var tr=W().trend(allScoped(),PEOPLE(),getS(),LEAVE(),months,LSET(),ownBy,qualBy);
  h+='<div class="panel"><h3>แนวโน้มรายเดือน (6 เดือน) <span class="wc-sub">Workload · Utilization · KPI</span></h3>'+trendChart(tr)+'</div>';
  return h;
 }
@@ -153,14 +155,17 @@ function renderKPI(){var T=teamData(),S=getS();
  var h='<div class="panel"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap"><h3 style="margin:0">KPI Performance</h3><span class="wc-sub">Prod '+S.kpiWeights.productivity+' · Time '+S.kpiWeights.timeliness+' · Qual '+S.kpiWeights.quality+' · Own '+S.kpiWeights.ownership+' · N/A re-normalised (ไม่ให้ 0 อัตโนมัติ)</span></div>';
  h+='<table class="table wc-t" style="margin-top:10px"><thead><tr><th>Member</th><th>Productivity</th><th>Timeliness</th><th>Quality</th><th>Ownership</th><th>Total /100</th><th>Grade</th></tr></thead><tbody>';
  h+=rowsShown(T).map(function(r){var k=r.kpi;return '<tr class="wc-kpirow" data-m="'+E(r.member)+'"><td><b>'+E(r.member)+'</b></td><td style="text-align:center">'+NA(k.productivity)+'</td><td style="text-align:center">'+NA(k.timeliness)+'</td><td style="text-align:center">'+NA(k.quality)+'</td><td style="text-align:center">'+NA(k.ownership)+'</td><td style="text-align:center"><b>'+NA(k.total)+'</b></td><td>'+(k.total==null?'<span class="wc-na">N/A</span>':'<span class="pill wc-bl">'+E(r.grade)+'</span>')+'</td></tr>';}).join('');
- h+='</tbody></table><div class="wc-legend">คลิกชื่อสมาชิกเพื่อบันทึก Performance Log (ชั่วโมงจริง/รอบแก้/Ownership) ที่ปลดล็อก Productivity · Quality · Ownership</div></div>';
+ h+='</tbody></table><div class="wc-legend">คลิกชื่อสมาชิกเพื่อบันทึก Performance Log (ชั่วโมงจริง · คะแนนความถูกต้องแม่นยำ · Ownership) ที่ปลดล็อก Productivity · Quality · Ownership</div></div>';
  if(ST.drill){var m=ST.drill;var pf=PERF();var comp=scope().filter(function(t){return t.status==='Completed'&&(t.lead===m||(t.types||[]).some(function(u){return u&&u.owner===m;}));});
-  var om=OWNS()[m+'|'+curYM()]||{};
+  var om=OWNS()[m+'|'+curYM()]||{};var qm=QUALS()[m+'|'+curYM()]||{};
   h+='<div class="panel"><h3>Performance Log · '+E(m)+' · '+curYM()+' <span class="wc-sub">('+comp.length+' งานที่เสร็จ)</span></h3>';
-  h+='<div class="wc-sub" style="margin-bottom:8px">กรอก “ชั่วโมงจริง” และ “รอบแก้ (Revisions)” → ปลดล็อก Productivity &amp; Quality · เว้นว่าง = N/A (ไม่คิดเป็น 0)</div>';
-  h+='<table class="table wc-t"><thead><tr><th>งาน</th><th>กำหนด</th><th>ส่งจริง</th><th>ตรงเวลา</th><th>Std Hrs</th><th>Actual Hrs</th><th>Revisions</th></tr></thead><tbody>'
-   +(comp.length?comp.map(function(t){var dlv=t.completed||t.publish||'';var ok=t.due&&dlv&&dlv<=t.due;var p=pf[t.id]||{};return '<tr><td>'+E(t.title)+'</td><td>'+E(t.due||'—')+'</td><td>'+E(dlv||'—')+'</td><td>'+(ok?'<span class="pill wc-ok">ตรง</span>':'<span class="pill wc-ov">ช้า</span>')+'</td><td style="text-align:center;color:#64748b">'+W().plannedHours(getS(),t)+'</td><td style="text-align:center"><input type="number" step="0.5" min="0" class="wc-perf" data-id="'+E(t.id)+'" data-f="actualHours" value="'+(p.actualHours!=null?p.actualHours:'')+'" style="width:72px"></td><td style="text-align:center"><input type="number" step="1" min="0" class="wc-perf" data-id="'+E(t.id)+'" data-f="revisions" value="'+(p.revisions!=null?p.revisions:'')+'" style="width:62px"></td></tr>';}).join(''):'<tr><td class="empty" colspan="7">ยังไม่มีงานที่เสร็จ (KPI = N/A)</td></tr>')
+  h+='<div class="wc-sub" style="margin-bottom:8px">กรอก “ชั่วโมงจริง” ของแต่ละงาน → ปลดล็อก Productivity · เว้นว่าง = N/A (ไม่คิดเป็น 0)</div>';
+  h+='<table class="table wc-t"><thead><tr><th>งาน</th><th>กำหนด</th><th>ส่งจริง</th><th>ตรงเวลา</th><th>Std Hrs</th><th>Actual Hrs</th></tr></thead><tbody>'
+   +(comp.length?comp.map(function(t){var dlv=t.completed||t.publish||'';var ok=t.due&&dlv&&dlv<=t.due;var p=pf[t.id]||{};return '<tr><td>'+E(t.title)+'</td><td>'+E(t.due||'—')+'</td><td>'+E(dlv||'—')+'</td><td>'+(ok?'<span class="pill wc-ok">ตรง</span>':'<span class="pill wc-ov">ช้า</span>')+'</td><td style="text-align:center;color:#64748b">'+W().plannedHours(getS(),t)+'</td><td style="text-align:center"><input type="number" step="0.5" min="0" class="wc-perf" data-id="'+E(t.id)+'" data-f="actualHours" value="'+(p.actualHours!=null?p.actualHours:'')+'" style="width:72px"></td></tr>';}).join(''):'<tr><td class="empty" colspan="6">ยังไม่มีงานที่เสร็จ (Productivity/Timeliness = N/A)</td></tr>')
    +'</tbody></table>';
+  h+='<h4 class="wc-h4" style="margin-top:14px">Quality · ความถูกต้องแม่นยำ (ผู้จัดการประเมิน) · ถ่วงน้ำหนัก '+getS().kpiWeights.quality+'%</h4>';
+  h+='<div class="wc-form"><label>Score (0–100)<input type="number" min="0" max="100" id="wc_qual" value="'+(qm.score!=null?qm.score:'')+'"></label><label style="flex:1;min-width:220px">หลักฐาน/เหตุผล (Evidence)<input type="text" id="wc_qual_note" value="'+E(qm.note||'')+'" placeholder="เช่น งานถูกต้องครบถ้วน ไม่มีข้อผิดพลาด / มีจุดต้องแก้เล็กน้อย"></label></div>';
+  h+='<div class="row" style="gap:8px;margin-top:8px"><button class="primary" id="wc_qual_save">บันทึก Quality</button>'+(qm.by?'<span class="wc-sub">ล่าสุดโดย '+E(qm.by)+' · '+E((qm.at||'').slice(0,10))+'</span>':'<span class="wc-sub">ให้คะแนนความถูกต้องแม่นยำของงานในเดือนนี้ (0–100)</span>')+'</div>';
   h+='<h4 class="wc-h4" style="margin-top:14px">Ownership (ผู้จัดการประเมิน) · ถ่วงน้ำหนัก '+getS().kpiWeights.ownership+'%</h4>';
   h+='<div class="wc-form"><label>Score (0–100)<input type="number" min="0" max="100" id="wc_own" value="'+(om.score!=null?om.score:'')+'"></label><label style="flex:1;min-width:220px">หลักฐาน/เหตุผล (Evidence)<input type="text" id="wc_own_note" value="'+E(om.note||'')+'" placeholder="เช่น รับงานด่วนแทนทีม, แก้ปัญหาเชิงรุก"></label></div>';
   h+='<div class="row" style="gap:8px;margin-top:8px"><button class="primary" id="wc_own_save">บันทึก Ownership</button>'+(om.by?'<span class="wc-sub">ล่าสุดโดย '+E(om.by)+' · '+E((om.at||'').slice(0,10))+'</span>':'<span class="wc-sub">ให้คะแนนพร้อมหลักฐานเพื่อความเป็นธรรม</span>')+'</div>';
@@ -218,8 +223,9 @@ function bindBody(){
  if(g('wc_capsave'))g('wc_capsave').onclick=function(){var m=ST.drill;var uu=u();uu.capacity=uu.capacity||{};uu.capacity.perMember=uu.capacity.perMember||{};uu.capacity.perMember[m]={scheduledHours:+g('wc_sched').value,meetingHours:+g('wc_meet').value,otherHours:+g('wc_other').value};saveUser(uu);audit('capacity',m);ST._capedit=0;ST.drill=null;if(typeof notify==='function')notify('บันทึก Capacity '+m+' แล้ว');renderWC();};
  // kpi drill
  document.querySelectorAll('.wc-kpirow').forEach(function(tr){tr.querySelector('td').onclick=function(){ST.drill=(ST.drill===tr.dataset.m?null:tr.dataset.m);renderWC();};tr.style.cursor='pointer';});
- // performance log capture (actual hours / revisions)
+ // performance log capture (actual hours)
  document.querySelectorAll('.wc-perf').forEach(function(e){e.onchange=function(){var pf=PERF(),id=e.dataset.id;pf[id]=pf[id]||{};if(e.value===''){delete pf[id][e.dataset.f];}else{pf[id][e.dataset.f]=+e.value;}if(!Object.keys(pf[id]).length)delete pf[id];jsave(PKEY,pf);audit('perf-log',id+'·'+e.dataset.f+'='+e.value);renderWC();};});
+ if(g('wc_qual_save'))g('wc_qual_save').onclick=function(){var o=QUALS(),key=ST.drill+'|'+curYM(),sc=g('wc_qual').value;if(sc===''){delete o[key];}else{o[key]={score:Math.max(0,Math.min(100,Math.round(+sc))),note:g('wc_qual_note').value||'',by:ME(),at:new Date().toISOString()};}jsave(QKEY,o);audit('quality',key+'='+sc);if(typeof notify==='function')notify('บันทึก Quality '+ST.drill+' แล้ว');renderWC();};
  if(g('wc_own_save'))g('wc_own_save').onclick=function(){var o=OWNS(),key=ST.drill+'|'+curYM(),sc=g('wc_own').value;if(sc===''){delete o[key];}else{o[key]={score:Math.max(0,Math.min(100,Math.round(+sc))),note:g('wc_own_note').value||'',by:ME(),at:new Date().toISOString()};}jsave(OKEY,o);audit('ownership',key+'='+sc);if(typeof notify==='function')notify('บันทึก Ownership '+ST.drill+' แล้ว');renderWC();};
  // version restore
  document.querySelectorAll('.wc-restore').forEach(function(b){b.onclick=function(){var hh=jload(HKEY,[])||[],v=hh[+b.dataset.i];if(!v||!v.settings)return;if(!window.confirm('คืนค่า Scoring Settings เป็นเวอร์ชัน Effective '+(v.effective||'—')+'?\\n(ค่าปัจจุบันจะถูกแทนที่)'))return;jsave(WKEY,v.settings);audit('restore',v.effective||'');if(typeof notify==='function')notify('คืนค่าเวอร์ชัน '+(v.effective||'')+' แล้ว');renderWC();};});
