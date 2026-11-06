@@ -11,6 +11,7 @@ DATA_FILE=os.path.join(DATA_DIR,'data.json')
 HIST_FILE=os.path.join(DATA_DIR,'task_history.json')  # shared task change-history (team-wide)
 # shared, id-keyed collections that use atomic per-item merge (no whole-blob last-write-wins)
 COLL_KEYS={'worktracker-commplan-v1','worktracker-projteams-v1','worktracker-proj-archived-v1','worktracker-proj-purged-v1'}
+ACCESS_KEY='worktracker-access-v1'  # per-person page permissions; writable by admins only
 USERS_FILE=os.path.join(DATA_DIR,'users.json')
 CONFIG_FILE=os.path.join(DATA_DIR,'config.json')
 TEMPLATE=os.path.join(BASE,'index.html')
@@ -114,7 +115,7 @@ def user_source():
 # ---- token ----
 def make_token(u):
     cfg=get_config()
-    payload={'n':u['name'],'t':u.get('team',''),'r':u.get('role',''),'exp':int(time.time())+TTL}
+    payload={'n':u['name'],'t':u.get('team',''),'r':u.get('role',''),'e':u.get('email',''),'exp':int(time.time())+TTL}
     raw=base64.urlsafe_b64encode(json.dumps(payload,ensure_ascii=False).encode()).decode()
     sig=hmac.new(cfg['secret'].encode(),raw.encode(),hashlib.sha256).hexdigest()[:32]
     return raw+'.'+sig
@@ -125,7 +126,7 @@ def parse_token(tok):
         if not hmac.compare_digest(sig,good): return None
         p=json.loads(base64.urlsafe_b64decode(raw.encode()).decode())
         if p.get('exp',0)<time.time(): return None
-        return {'name':p['n'],'team':p.get('t',''),'role':p.get('r','')}
+        return {'name':p['n'],'team':p.get('t',''),'role':p.get('r',''),'email':p.get('e','')}
     except Exception: return None
 
 def authenticate(ident,code):
@@ -826,9 +827,11 @@ class H(BaseHTTPRequestHandler):
                 jwrite(HIST_FILE,h)
             return self._json(200,{'ok':True,'entry':entry})
         if path=='/api/state':
-            if not self._user(): return self._json(401,{'error':'unauthorized'})
+            usr=self._user()
+            if not usr: return self._json(401,{'error':'unauthorized'})
             key=(parse_qs(u.query).get('key') or [None])[0]
             if not key: return self._json(400,{'error':'key required'})
+            if key==ACCESS_KEY and not is_admin(usr): return self._json(403,{'error':'forbidden'})
             with STATE_LOCK:
                 d=jread(DATA_FILE,{}); d[key]=self._body(); jwrite(DATA_FILE,d)
             return self._json(200,{'ok':True})
@@ -837,8 +840,10 @@ class H(BaseHTTPRequestHandler):
     def do_DELETE(self):
         u=urlparse(self.path)
         if u.path=='/api/state':
-            if not self._user(): return self._json(401,{'error':'unauthorized'})
+            usr=self._user()
+            if not usr: return self._json(401,{'error':'unauthorized'})
             key=(parse_qs(u.query).get('key') or [None])[0]
+            if (key==ACCESS_KEY or not key) and not is_admin(usr): return self._json(403,{'error':'forbidden'})
             with STATE_LOCK:
                 d=jread(DATA_FILE,{})
                 if key: d.pop(key,None)
