@@ -6,6 +6,7 @@ var MD=[['memo','บันทึก'],['info','Infographic'],['vdo','VDO']];
 var STS=(typeof statuses!=='undefined'?statuses:['To Do','In Progress','Completed']);
 var PROG=['In Progress','Review','Approval','Revision','Ready to Publish'];
 var editingCP=null;
+var selMode=false,sel={},lastCids=[];
 var F={search:'',gran:'all',date:'',start:'',end:'',ch:'',md:'',status:'',sort:'date'};
 window.__cpF=F;
 function esc2(x){return (typeof esc==='function')?esc(x):String(x==null?'':x);}
@@ -40,9 +41,12 @@ function taskCell(r){
 window.cpSyncLinked=function(){var _a=load(),_ch=false;_a.forEach(function(r){if(r.taskId&&typeof tasks!=='undefined'&&tasks){var _t=tasks.find(function(x){return x.id===r.taskId;});if(_t){if(r.status!==_t.status){r.status=_t.status;_ch=true;}}else{r.taskId=null;_ch=true;}}});if(_ch)save(_a);};window.renderCP=function(){window.cpSyncLinked();
  var host=document.getElementById('cpTable');if(!host)return;
  var all=load();
+ // drop any selection whose record no longer exists (e.g. deleted elsewhere)
+ var _allset={};all.forEach(function(r){_allset[r.cid]=1;});Object.keys(sel).forEach(function(c){if(!_allset[c])delete sel[c];});
  // base = all filters EXCEPT channel (so channel facet counts stay informative); fr = fully-filtered set
  var base=all.filter(function(r){return match(r,true);});
  var fr=base.filter(function(r){return !F.ch||(r.ch&&r.ch[F.ch]);});
+ lastCids=fr.map(function(r){return r.cid;});
  // 6 KPIs from the fully-filtered set. Status buckets are MECE (comp+prog+plan=tot); SMS is a separate axis.
  var tot=fr.length,comp=0,prog=0,plan=0,sms=0,overdue=0,today=new Date().toISOString().slice(0,10);
  fr.forEach(function(r){var s=r.status;if(s==='Completed')comp++;else if(PROG.indexOf(s)>=0)prog++;else plan++;if(r.ch&&r.ch.sms)sms++;if(s!=='Completed'&&s!=='Cancelled'&&r.date&&r.date<today)overdue++;});
@@ -62,9 +66,10 @@ window.cpSyncLinked=function(){var _a=load(),_ch=false;_a.forEach(function(r){if
  else{var curd=null,grp=(F.sort==='date'||F.sort==='date_desc');
   rows.forEach(function(r){
    var gk=r.date||r.day||'';if(grp&&gk!==curd){curd=gk;var cnt=rows.filter(function(x){return (x.date||x.day||'')===curd;}).length;var glb=curd?(esc2(curd)+(/^\d{4}-/.test(curd)?(' · '+dow(curd)):'')):'ไม่ระบุวันที่';html+='<tr class="cp-grp"><td colspan="'+ncol+'"><div class="cp-grp-in"><span class="cp-grp-date">📅 '+glb+'</span><span class="cp-grp-count">'+cnt+' รายการ</span></div></td></tr>';}
-   html+='<tr><td>'+esc2(r.day||dow(r.date).slice(0,2))+'</td><td>'+esc2(r.date||'—')+'</td><td><b>'+esc2(r.topic||'')+'</b></td><td>'+esc2(r.time||'—')+'</td><td>'+tags(r.ch,CH)+'</td><td>'+tags(r.md,MD)+'</td><td><span class="pill '+stCls(r.status)+'">'+esc2(slab(r.status))+'</span></td><td class="cp-remark" title="'+esc2(r.remark||'')+'">'+esc2(r.remark||'')+'</td><td>'+taskCell(r)+'</td><td class="cp-ops">'+opsMenu(r.cid,true)+'</td></tr>';
+   html+='<tr'+(selMode&&sel[r.cid]?' class="cp-rowsel"':'')+'><td>'+(selMode?('<input type="checkbox" class="cp-sel" data-cid="'+esc2(r.cid)+'"'+(sel[r.cid]?' checked':'')+' style="margin-right:6px;vertical-align:middle">'):'')+esc2(r.day||dow(r.date).slice(0,2))+'</td><td>'+esc2(r.date||'—')+'</td><td><b>'+esc2(r.topic||'')+'</b></td><td>'+esc2(r.time||'—')+'</td><td>'+tags(r.ch,CH)+'</td><td>'+tags(r.md,MD)+'</td><td><span class="pill '+stCls(r.status)+'">'+esc2(slab(r.status))+'</span></td><td class="cp-remark" title="'+esc2(r.remark||'')+'">'+esc2(r.remark||'')+'</td><td>'+taskCell(r)+'</td><td class="cp-ops">'+opsMenu(r.cid,true)+'</td></tr>';
   });}
  host.innerHTML='<colgroup><col class="cp-c-day"><col class="cp-c-date"><col class="cp-c-topic"><col class="cp-c-time"><col class="cp-c-ch"><col class="cp-c-md"><col class="cp-c-st"><col class="cp-c-remark"><col class="cp-c-task"><col class="cp-c-ops"></colgroup><thead><tr><th>วัน</th><th>วันที่</th><th>เรื่องสื่อสาร</th><th>เวลา</th><th>ช่องทาง</th><th>รูปแบบสื่อ</th><th>สถานะ</th><th>หมายเหตุ</th><th>Task</th><th>จัดการ</th></tr></thead><tbody>'+html+'</tbody>';
+ ensureBulkBar();updateBulkBar();
  var shost=document.getElementById('cpSmsTable');
  if(shost){var sq=((document.getElementById('cpSmsSearch')||{}).value||'').toLowerCase();
   var srows=sortRows(all.filter(function(r){return r.ch&&r.ch.sms;})).filter(function(r){if(!sq)return true;return (((r.topic||'')+' '+(r.sms_msg||'')+' '+(r.sms_target||'')+' '+(r.owner||'')).toLowerCase()).indexOf(sq)>=0;});
@@ -74,6 +79,34 @@ window.cpSyncLinked=function(){var _a=load(),_ch=false;_a.forEach(function(r){if
   shost.innerHTML='<colgroup><col class="cp-c-date"><col class="cp-c-time"><col class="cp-c-topic"><col class="cp-c-smsmsg"><col class="cp-c-target"><col class="cp-c-owner"><col class="cp-c-st"><col class="cp-c-remark"><col class="cp-c-ops"></colgroup><thead><tr><th>วันที่</th><th>เวลา</th><th>เรื่องสื่อสาร</th><th>SMS Message</th><th>Target</th><th>Owner</th><th>สถานะ</th><th>หมายเหตุ</th><th>จัดการ</th></tr></thead><tbody>'+sh+'</tbody>';}
 };
 function g(id){return document.getElementById(id);}
+// ---- bulk multi-select + delete ----
+function ensureBulkBar(){
+ if(g('cpBulkBar'))return;var host=g('cpTable');if(!host)return;
+ var wrap=(host.closest&&host.closest('.cp-table-wrap'))||host;
+ var bar=document.createElement('div');bar.id='cpBulkBar';bar.className='cp-bulkbar';
+ bar.innerHTML='<button class="ghost cp-mini cp-seltoggle" id="cpSelToggle">☑ เลือกหลายรายการ</button>'
+  +'<span class="cp-selinfo" id="cpSelInfo" hidden></span>'
+  +'<button class="ghost cp-mini" id="cpSelAll" hidden>เลือกทั้งหมด (ตามตัวกรอง)</button>'
+  +'<button class="ghost cp-mini" id="cpSelClear" hidden>ล้างการเลือก</button>'
+  +'<button class="cp-btn-del" id="cpSelDel" hidden>🗑 ลบที่เลือก</button>';
+ if(wrap&&wrap.parentNode)wrap.parentNode.insertBefore(bar,wrap);
+ g('cpSelToggle').onclick=function(){selMode=!selMode;if(!selMode)sel={};window.renderCP();};
+ g('cpSelAll').onclick=function(){lastCids.forEach(function(c){sel[c]=1;});window.renderCP();};
+ g('cpSelClear').onclick=function(){sel={};window.renderCP();};
+ g('cpSelDel').onclick=bulkDelCP;
+}
+function updateBulkBar(){
+ var tg=g('cpSelToggle');if(!tg)return;var n=Object.keys(sel).length;
+ tg.textContent=selMode?'✕ ปิดโหมดเลือก':'☑ เลือกหลายรายการ';tg.classList.toggle('on',selMode);
+ ['cpSelInfo','cpSelAll','cpSelClear','cpSelDel'].forEach(function(id){var e=g(id);if(e)e.hidden=!selMode;});
+ var info=g('cpSelInfo');if(info)info.textContent='เลือกแล้ว '+n+' รายการ';
+ var del=g('cpSelDel');if(del){del.disabled=!n;del.textContent='🗑 ลบที่เลือก'+(n?(' ('+n+')'):'');}
+}
+function bulkDelCP(){var ids=Object.keys(sel);if(!ids.length)return;
+ if(!window.confirm('ลบรายการที่เลือก '+ids.length+' รายการ?\nการลบนี้ย้อนกลับไม่ได้'))return;
+ var mark={};ids.forEach(function(i){mark[i]=1;});
+ var all=load();save(all.filter(function(x){return !mark[x.cid];}));
+ sel={};selMode=false;window.renderCP();if(typeof notify==='function')notify('ลบแล้ว '+ids.length+' รายการ');}
 // consolidated "More Actions" kebab (same data-cpact handlers, just grouped)
 function opsMenu(cid,full){var e=esc2(cid);
  var items='<button class="cp-mi" data-cpact="edit" data-cid="'+e+'">✎ แก้ไข</button>'
@@ -147,6 +180,7 @@ function init(){
  var mb=g('cpModalbg');if(mb)mb.addEventListener('click',function(e){if(e.target.id==='cpModalbg')closeCP();});
  ['cpConnect','cpImport'].forEach(function(id){on(id,'click',function(){if(window.cpWizard)window.cpWizard();else if(typeof notify==='function')notify('ตัวช่วยนำเข้า Google Sheet กำลังจะมาในขั้นถัดไป');});});
  [g('cpTable'),g('cpSmsTable')].forEach(function(T){if(T&&!T._cp){T._cp=1;T.addEventListener('click',function(e){
+   var sb=e.target.closest('.cp-sel');if(sb){var scid=sb.dataset.cid;if(sb.checked)sel[scid]=1;else delete sel[scid];var tr=sb.closest('tr');if(tr)tr.classList.toggle('cp-rowsel',!!sel[scid]);updateBulkBar();return;}
    var kb=e.target.closest('[data-cpmenu]');
    if(kb){e.stopPropagation();var menu=kb.parentNode.querySelector('.cp-menu');var wasOpen=menu&&menu.hidden===false;closeCpMenus();if(menu&&!wasOpen){menu.hidden=false;kb.classList.add('open');positionCpMenu(kb,menu);}return;}
    var b=e.target.closest('[data-cpact]');if(!b)return;closeCpMenus();var act=b.dataset.cpact,cid=b.dataset.cid;if(act==='edit')openCP(cid);else if(act==='del')delCP(cid);else if(act==='dup')dupCP(cid);else if(act==='task')createTaskFromCP(cid);});}});

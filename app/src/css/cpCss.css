@@ -66,3 +66,12 @@
 .cp-tag-sms{background:#fde9cf;color:#9a5b16}
 .cp-tag-appstaff{background:#d8f0f2;color:#0e7b86}
 .cp-tag-lastmile{background:#fce3ef;color:#b0356f}
+/* --- bulk multi-select + delete (Communication Plan) --- */
+.cp-bulkbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 8px}
+.cp-seltoggle.on{background:#1766cc;color:#fff;border-color:#1766cc}
+.cp-selinfo{font-size:12px;color:#1766cc;font-weight:600}
+.cp-btn-del{background:#c0392b;color:#fff;border:1px solid #c0392b;padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer}
+.cp-btn-del:hover{background:#a93226}
+.cp-btn-del:disabled{opacity:.45;cursor:not-allowed}
+#cpTable tr.cp-rowsel>td{background:#eaf1fb}
+input.cp-sel{cursor:pointer;width:15px;height:15px;accent-color:#1766cc}
