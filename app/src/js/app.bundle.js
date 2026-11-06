@@ -890,11 +890,11 @@ function esc2(x){return (typeof esc==='function')?esc(x):String(x==null?'':x);}
 function who(){return (window.__WT_USER__&&window.__WT_USER__.name)||'ผู้ใช้';}
 var STS=(typeof statuses!=='undefined'?statuses:['To Do','In Progress','Completed']);
 function slab(s){return (typeof statusLabel!=='undefined'&&statusLabel[s])||s;}
-var SYS=[['communication_date','วันที่ (Date)','date'],['title','เรื่องสื่อสาร (Topic) *','text'],['communication_time','เวลาสื่อสาร (Time)','time'],['publish','วันเผยแพร่ (ใช้เป็นวันที่ · External)','date'],['date_start','วันดำเนินการ','date'],['date_done','วันเสร็จสิ้น','date'],
+var SYS=[['day','วัน (Day)','text'],['communication_date','วันที่ (Date)','date'],['title','เรื่องสื่อสาร (Topic) *','text'],['communication_time','เวลาสื่อสาร (Time)','time'],['publish','วันเผยแพร่ (ใช้เป็นวันที่ · External)','date'],['date_start','วันดำเนินการ','date'],['date_done','วันเสร็จสิ้น','date'],
 ['channel_line','ช่องทาง · LINE','bool'],['channel_top_hit','ช่องทาง · TOP HIT','bool'],['channel_banner','ช่องทาง · Banner','bool'],['channel_sms','ช่องทาง · SMS','bool'],['channel_appstaff','ช่องทาง · APP STAFF','bool'],['channel_lastmile','ช่องทาง · Lastmile','bool'],
 ['media_memo','สื่อ · บันทึก','bool'],['media_infographic','สื่อ · Infographic','bool'],['media_video','สื่อ · VDO','bool'],
 ['status','สถานะ (Status)','status'],['remark','หมายเหตุ (Remark)','text'],['sms_message','SMS Message','text'],['target','Target / Audience','text'],['owner','Owner','text'],['category','หัวข้อ','text'],['unit','หน่วยงาน','text'],['project','ชื่อโครงการ/แคมเปญ','text']];
-var ALIAS={communication_date:['วันที่','date'],title:['เรื่องสื่อสาร','เรื่อง','หัวข้อเรื่อง','title','topic'],communication_time:['เวลาสื่อสาร','เวลา','time'],
+var ALIAS={day:['วัน','วันในสัปดาห์','วันที่สื่อสาร (วัน)','weekday'],communication_date:['วันที่','date'],title:['เรื่องสื่อสาร','เรื่อง','หัวข้อเรื่อง','title','topic'],communication_time:['เวลาสื่อสาร','เวลา','time'],
 channel_line:['line'],channel_top_hit:['top hit','tophit','top-hit','tophit'],channel_banner:['banner'],channel_sms:['sms'],channel_appstaff:['app staff','appstaff','app-staff'],channel_lastmile:['lastmile','last mile','last-mile'],
 media_memo:['บันทึก','memo'],media_infographic:['info','infographic','อินโฟ'],media_video:['vdo','video','วิดีโอ'],
 status:['สถานะ','status'],remark:['หมายเหตุ','remark','note'],sms_message:['sms message','ข้อความ sms','ข้อความ'],target:['target','audience','กลุ่มเป้าหมาย','เป้าหมาย'],owner:['owner','ผู้รับผิดชอบ','เจ้าของ'],publish:['วันเผยแพร่','เผยแพร่'],date_start:['วันดำเนินการ'],date_done:['วันเสร็จสิ้น','วันเสร็จ'],category:['หัวข้อ'],unit:['หน่วยงาน'],project:['ชื่อโครงการ/แคมเปญ','ชื่อโครงการ','แคมเปญ','โครงการ']};
@@ -975,7 +975,11 @@ function applyHeader(){var G=grid();var hi=WZ.hdrIdx||0;var H=G[hi]||[];var sub=
  WZ.headers=H.map(function(c,j){var s=(sub&&sub[j])?(''+sub[j]).trim():'';return s||(''+(c||'')).trim();});
  WZ.rows=G.slice(dataStart).filter(function(r){return (r||[]).some(function(c){return (c||'').trim();});});
  WZ.total=WZ.rows.length;}
-function autoMap(){WZ.map={};var used={};SYS.forEach(function(f){var key=f[0];var al=ALIAS[key]||[];for(var j=0;j<WZ.headers.length;j++){if(used[j])continue;var hh=(WZ.headers[j]||'').toLowerCase().trim();for(var a=0;a<al.length;a++){if(hh===al[a]||hh.indexOf(al[a])>=0){WZ.map[key]=j;used[j]=1;return;}}}});}
+function autoMap(){WZ.map={};var used={};
+ // Two passes: exact header match first (so e.g. "วัน" and "วันที่" never steal each
+ // other via substring), then fuzzy substring for anything still unmapped.
+ function pass(exact){SYS.forEach(function(f){var key=f[0];if(key in WZ.map)return;var al=ALIAS[key]||[];for(var j=0;j<WZ.headers.length;j++){if(used[j])continue;var hh=(WZ.headers[j]||'').toLowerCase().trim();if(!hh)continue;for(var a=0;a<al.length;a++){var av=al[a];if(exact?(hh===av):(hh.indexOf(av)>=0)){WZ.map[key]=j;used[j]=1;return;}}}});}
+ pass(true);pass(false);}
 
 // STEP 2 — map
 function stepMap(B){
@@ -1033,7 +1037,8 @@ function stepPreview(B){
   rows+='<tr class="'+cls+(p.skip?' wz-skip':'')+'" title="'+esc2(errT)+'">'
    +'<td><input type="checkbox" class="wz-sel" data-i="'+i+'"'+(p.sel&&!p.skip?' checked':'')+(p.level==='error'?' disabled':'')+'></td>'
    +'<td>'+badge(p.level)+'</td>'
-   +'<td><input class="wz-ed cp-inp" data-i="'+i+'" data-f="date" value="'+esc2(p.o.date===null?p.o._rawDate:(p.o.date||p.o.day||''))+'" style="width:120px"></td>'
+   +'<td><input class="wz-ed cp-inp" data-i="'+i+'" data-f="day" value="'+esc2(p.o.day||'')+'" style="width:72px"></td>'
+   +'<td><input class="wz-ed cp-inp" data-i="'+i+'" data-f="date" value="'+esc2(p.o.date===null?p.o._rawDate:(p.o.date||''))+'" style="width:120px"></td>'
    +'<td><input class="wz-ed cp-inp" data-i="'+i+'" data-f="time" value="'+esc2(p.o.time||'')+'" style="width:80px"></td>'
    +'<td><input class="wz-ed cp-inp" data-i="'+i+'" data-f="topic" value="'+esc2(p.o.topic||'')+'" style="width:220px"></td>'
    +'<td>'+chTags(p.o.ch)+'</td><td>'+mdTags(p.o.md)+'</td>'
@@ -1041,15 +1046,16 @@ function stepPreview(B){
    +'<td><button class="ghost cp-mini wz-skipbtn" data-i="'+i+'">'+(p.skip?'ยกเลิกข้าม':'ข้าม')+'</button></td>'
    +'</tr>';
  });
- if(!rows)rows='<tr><td class="empty" colspan="9">ไม่มีแถวในตัวกรองนี้</td></tr>';
- B.innerHTML=head+'<div class="cp-table-wrap" style="max-height:440px"><table class="table"><thead><tr><th>นำเข้า</th><th>สถานะ</th><th>วันที่</th><th>เวลา</th><th>เรื่องสื่อสาร</th><th>ช่องทาง</th><th>สื่อ</th><th>สถานะงาน</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="tiny muted" style="margin-top:6px">วางเมาส์บนแถวเพื่อดูสาเหตุ · แก้ไขช่องวันที่/เวลา/เรื่อง/สถานะได้โดยตรง แล้วระบบจะตรวจสอบใหม่ทันที</div>';
+ if(!rows)rows='<tr><td class="empty" colspan="10">ไม่มีแถวในตัวกรองนี้</td></tr>';
+ B.innerHTML=head+'<div class="cp-table-wrap" style="max-height:440px"><table class="table"><thead><tr><th>นำเข้า</th><th>สถานะ</th><th>วัน</th><th>วันที่</th><th>เวลา</th><th>เรื่องสื่อสาร</th><th>ช่องทาง</th><th>สื่อ</th><th>สถานะงาน</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div><div class="tiny muted" style="margin-top:6px">วางเมาส์บนแถวเพื่อดูสาเหตุ · แก้ไขช่องวันที่/เวลา/เรื่อง/สถานะได้โดยตรง แล้วระบบจะตรวจสอบใหม่ทันที</div>';
  B.querySelectorAll('.wz-flt').forEach(function(b){b.onclick=function(){WZ._pflt=b.dataset.f;stepPreview(B);};});
  B.querySelector('#wzSelAll').onclick=function(){WZ.parsed.forEach(function(p){if(p.level!=='error')p.sel=true;});stepPreview(B);};
  B.querySelector('#wzSelNone').onclick=function(){WZ.parsed.forEach(function(p){p.sel=false;});stepPreview(B);};
  B.querySelectorAll('.wz-sel').forEach(function(c){c.onchange=function(){WZ.parsed[+c.dataset.i].sel=c.checked;};});
  B.querySelectorAll('.wz-skipbtn').forEach(function(b){b.onclick=function(){var p=WZ.parsed[+b.dataset.i];p.skip=!p.skip;stepPreview(B);};});
  B.querySelectorAll('.wz-ed').forEach(function(inp){inp.onchange=function(){var p=WZ.parsed[+inp.dataset.i];var f=inp.dataset.f;
-   if(f==='date'){var vv=inp.value.trim();if(!vv){p.o.date='';p.o._rawDate='';}else if(WDAY[vv]){p.o.day=vv;p.o.date='';p.o._rawDate='';}else{p.o.date=normDate(vv);p.o._rawDate=vv;}}
+   if(f==='day'){p.o.day=inp.value.trim();}
+   else if(f==='date'){var vv=inp.value.trim();if(!vv){p.o.date='';p.o._rawDate='';}else if(WDAY[vv]){p.o.day=vv;p.o.date='';p.o._rawDate='';}else{p.o.date=normDate(vv);p.o._rawDate=vv;}}
    else if(f==='time')p.o.time=inp.value.trim();
    else if(f==='topic')p.o.topic=inp.value.trim();
    else if(f==='status')p.o.status=inp.value;
