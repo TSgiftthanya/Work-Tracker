@@ -788,7 +788,7 @@ window.cpSyncLinked=function(){var _a=load(),_ch=false;_a.forEach(function(r){if
  sm('cpChLine',_chc.line);sm('cpChTophit',_chc.tophit);sm('cpChBanner',_chc.banner);sm('cpChSmsCount',_chc.sms);sm('cpChAppstaff',_chc.appstaff);sm('cpChLastmile',_chc.lastmile);sm('cpChAll',base.length);
  var _cr=document.getElementById('cpChRow');if(_cr)_cr.querySelectorAll('[data-cpch]').forEach(function(b){b.classList.toggle('primary',(b.dataset.cpch||'')===(F.ch||''));});
  var _bw=document.getElementById('cpBreakWrap');if(_bw)_bw.innerHTML=breakdownHtml(base.length,_chc,_mdc);
- var rows=sortRows(fr);var ncol=10;var html='';
+ var rows=sortRows(fr);window.__cpShown=rows;var ncol=10;var html='';
  if(!rows.length)html='<tr><td class="empty" colspan="'+ncol+'">ไม่มีรายการ · กด “＋ เพิ่มรายการ” หรือ “นำเข้าข้อมูล”</td></tr>';
  else{var curd=null,grp=(F.sort==='date'||F.sort==='date_desc');
   rows.forEach(function(r){
@@ -870,6 +870,20 @@ function saveCP(){var topic=g('cpf_topic').value.trim();if(!topic){if(typeof not
  save(all);closeCP();window.renderCP();if(typeof notify==='function')notify(isNew?'เพิ่มรายการแล้ว':'บันทึกแล้ว');}
 function delCP(cid){var all=load();var r=all.find(function(x){return x.cid===cid;});if(!r)return;if(!window.confirm('ลบรายการ “'+(r.topic||cid)+'” ?'))return;save(all.filter(function(x){return x.cid!==cid;}));window.renderCP();if(typeof notify==='function')notify('ลบแล้ว');}
 function dupCP(cid){var all=load();var r=all.find(function(x){return x.cid===cid;});if(!r)return;var c=JSON.parse(JSON.stringify(r));c.cid=newId();c.taskId=null;c.topic=(r.topic||'')+' (คัดลอก)';all.push(c);save(all);window.renderCP();if(typeof notify==='function')notify('ทำซ้ำแล้ว');}
+// ---- export current filtered view to .xlsx ----
+function chStr(ch){return CH.filter(function(d){return ch&&ch[d[0]];}).map(function(d){return d[1];}).join(', ');}
+function mdStr(md){return MD.filter(function(d){return md&&md[d[0]];}).map(function(d){return d[1];}).join(', ');}
+function exportCP(){
+ if(typeof window.wtXlsxDownload!=='function'){if(typeof notify==='function')notify('ตัวช่วย Export ยังไม่พร้อม');return;}
+ var list=(window.__cpShown&&window.__cpShown.length!==undefined)?window.__cpShown:[];
+ if(!list.length){if(typeof notify==='function')notify('ไม่มีรายการให้ส่งออก (ตามตัวกรองปัจจุบัน)');return;}
+ var H=['วัน','วันที่','เวลา','เรื่องสื่อสาร','ช่องทาง','รูปแบบสื่อ','สถานะ','หมายเหตุ','SMS Message','Target','Owner'];
+ var out=[H];
+ list.forEach(function(r){out.push([r.day||dow(r.date),r.date||'',r.time||'',r.topic||'',chStr(r.ch),mdStr(r.md),slab(r.status),r.remark||'',r.sms_msg||'',r.sms_target||'',r.owner||'']);});
+ var d=new Date(),pad=function(n){return (n<10?'0':'')+n;};
+ var fn='WorkTracker-CommunicationPlan-'+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'.xlsx';
+ if(window.wtXlsxDownload(out,fn,'Communication Plan')&&typeof notify==='function')notify('Export '+list.length+' รายการ (ตามตัวกรอง) เป็น .xlsx แล้ว');
+}
 function createTaskFromCP(cid){var all=load();var r=all.find(function(x){return x.cid===cid;});if(!r)return;
  if(typeof tasks==='undefined'){if(typeof notify==='function')notify('ยังไม่พร้อมสร้าง Task');return;}
  if(r.taskId&&tasks.find(function(t){return t.id===r.taskId;})){if(typeof notify==='function')notify('มี Task สำหรับรายการนี้แล้ว');return;}
@@ -902,6 +916,7 @@ function init(){
  on('cpSort','change',function(e){F.sort=e.target.value;window.renderCP();});
  on('cpSmsSearch','input',function(){window.renderCP();});
  on('cpAdd','click',function(){openCP(null);});
+ on('cpExport','click',exportCP);
  on('cpSave','click',saveCP);on('cpCancel','click',closeCP);on('cpClose','click',closeCP);
  on('cpf_ch_sms','change',toggleSms);
  var mb=g('cpModalbg');if(mb)mb.addEventListener('click',function(e){if(e.target.id==='cpModalbg')closeCP();});
@@ -2107,7 +2122,7 @@ window.renderSO=function(){
  var depts=[];all.forEach(function(r){if(r.dept&&depts.indexOf(r.dept)<0)depts.push(r.dept);});depts.sort();
  var dsel=g('soFDept');if(dsel&&dsel._n!==depts.length+1){dsel._n=depts.length+1;dsel.innerHTML='<option value="">ทุกหน่วยงาน</option>'+depts.map(function(d){return '<option value="'+esc2(d)+'">'+esc2(d)+'</option>';}).join('');dsel.value=F.dept;}
  // table
- var srt=sortRows(rows),ncol=11,html='';
+ var srt=sortRows(rows);window.__soShown=srt;var ncol=11,html='';
  if(!srt.length)html='<tr><td class="empty" colspan="'+ncol+'">ไม่มีรายการ · กด “＋ เพิ่มรายการ” หรือ “นำเข้าข้อมูล”</td></tr>';
  else{var grp=(F.sort==='date'||F.sort==='date_desc'),curd=null;
   srt.forEach(function(r){
@@ -2132,6 +2147,19 @@ function saveSO(){var o={};for(var k in FLD){var e=g(FLD[k]);o[k]=e?e.value.trim
  save(all);closeSO();window.renderSO();if(typeof notify==='function')notify(editing?'บันทึกแล้ว':'เพิ่มรายการแล้ว');}
 function delSO(id){var all=load();var r=all.find(function(x){return x.soid===id;});if(!r)return;if(!window.confirm('ลบรายการ “'+(r.request||id)+'” ?'))return;save(all.filter(function(x){return x.soid!==id;}));window.renderSO();if(typeof notify==='function')notify('ลบแล้ว');}
 function dupSO(id){var all=load();var r=all.find(function(x){return x.soid===id;});if(!r)return;var c=JSON.parse(JSON.stringify(r));c.soid=newId();c.request=(r.request||'')+' (คัดลอก)';all.push(c);save(all);window.renderSO();if(typeof notify==='function')notify('ทำซ้ำแล้ว');}
+
+// ---------- Export current filtered view to .xlsx ----------
+function exportSO(){
+ if(typeof window.wtXlsxDownload!=='function'){if(typeof notify==='function')notify('ตัวช่วย Export ยังไม่พร้อม');return;}
+ var list=(window.__soShown&&window.__soShown.length!==undefined)?window.__soShown:[];
+ if(!list.length){if(typeof notify==='function')notify('ไม่มีรายการให้ส่งออก (ตามตัวกรองปัจจุบัน)');return;}
+ var H=['วันที่ดำเนินการ','เลขที่เอกสาร','ความต้องการ','วัตถุประสงค์','SKU','จำนวน','สาขา','วันที่ต้องการ','หน่วยงาน','สถานะ','หมายเหตุ'];
+ var out=[H];
+ list.forEach(function(r){out.push([r.actionDate||r.actionRaw||'',r.docNo||'',r.request||'',r.purpose||'',r.sku||'',r.qty||'',r.branches||'',r.requiredDate||'',r.dept||'',r.status||'',r.note||'']);});
+ var d=new Date(),pad=function(n){return (n<10?'0':'')+n;};
+ var fn='WorkTracker-SpecialOrder-'+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'.xlsx';
+ if(window.wtXlsxDownload(out,fn,'Special Order')&&typeof notify==='function')notify('Export '+list.length+' รายการ (ตามตัวกรอง) เป็น .xlsx แล้ว');
+}
 
 // ---------- Import (Google Sheet mapping) ----------
 var SYS=[['actionDate','วันที่ดำเนินการ'],['docNo','เลขที่เอกสาร'],['request','ความต้องการ'],['purpose','วัตถุประสงค์'],['sku','SKU'],['qty','จำนวน'],['branches','จำนวนสาขา'],['requiredDate','วันที่ต้องการ'],['dept','หน่วยงานที่รับผิดชอบ'],['status','สถานะ'],['note','หมายเหตุ']];
@@ -2182,6 +2210,7 @@ function init(){
  on('soGran','change',function(e){F.gran=e.target.value;var d=g('soDate'),s=g('soStart'),en=g('soEnd'),dh=g('soDash');var isC=(F.gran==='custom'),isS=(F.gran!=='all'&&!isC),t=new Date().toISOString().slice(0,10);if(d)d.hidden=!isS;[s,en,dh].forEach(function(x){if(x)x.hidden=!isC;});if(isS&&d&&!d.value){d.value=t;F.date=t;}if(isC){if(s&&!s.value)s.value=t;if(en&&!en.value)en.value=t;F.start=s?s.value:'';F.end=en?en.value:'';}window.renderSO();});
  on('soDate','change',function(e){F.date=e.target.value;window.renderSO();});on('soStart','change',function(e){F.start=e.target.value;window.renderSO();});on('soEnd','change',function(e){F.end=e.target.value;window.renderSO();});
  on('soAdd','click',function(){openSO(null);});
+ on('soExport','click',exportSO);
  on('soSave','click',saveSO);on('soCancel','click',closeSO);on('soClose','click',closeSO);
  var mb=g('soModalbg');if(mb)mb.addEventListener('click',function(e){if(e.target.id==='soModalbg')closeSO();});
  on('soImport','click',openImp);on('soImpFetch','click',impFetch);on('soImpGo','click',impDo);on('soImpClose','click',closeImp);on('soImpCancel','click',closeImp);
@@ -2248,7 +2277,8 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }
     return xml+'</sheetData></worksheet>';
   }
-  function buildXlsx(rows){
+  function buildXlsx(rows,sheetName){
+    var sn=String(sheetName==null?'Task Board':sheetName).replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,31)||'Sheet1';
     var ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
@@ -2260,7 +2290,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
     var wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
-      '<sheets><sheet name="Task Board" sheetId="1" r:id="rId1"/></sheets></workbook>';
+      '<sheets><sheet name="'+xesc(sn)+'" sheetId="1" r:id="rId1"/></sheets></workbook>';
     var wbr='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>';
@@ -2324,6 +2354,18 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
       if(typeof notify==='function')notify('Export ไม่สำเร็จ: '+(e&&e.message||e));
     }
   }
+  // Reusable .xlsx downloader for other pages (Communication Plan, Special Order, ...).
+  // rows = array-of-arrays (first row = header); returns true on success.
+  window.wtXlsxDownload=function(rows,filename,sheetName){
+    try{
+      var bytes=buildXlsx(rows||[[]],sheetName);
+      var blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');a.href=url;a.download=filename||'export.xlsx';document.body.appendChild(a);a.click();
+      setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},300);
+      return true;
+    }catch(e){if(typeof notify==='function')notify('Export ไม่สำเร็จ: '+(e&&e.message||e));return false;}
+  };
   document.addEventListener('click',function(e){
     if(!e.target.closest)return;
     if(e.target.closest('#wtExportXlsx')){e.preventDefault();download(allTasks(),'','ทั้งหมด');return;}

@@ -53,7 +53,7 @@ window.renderSO=function(){
  var depts=[];all.forEach(function(r){if(r.dept&&depts.indexOf(r.dept)<0)depts.push(r.dept);});depts.sort();
  var dsel=g('soFDept');if(dsel&&dsel._n!==depts.length+1){dsel._n=depts.length+1;dsel.innerHTML='<option value="">ทุกหน่วยงาน</option>'+depts.map(function(d){return '<option value="'+esc2(d)+'">'+esc2(d)+'</option>';}).join('');dsel.value=F.dept;}
  // table
- var srt=sortRows(rows),ncol=11,html='';
+ var srt=sortRows(rows);window.__soShown=srt;var ncol=11,html='';
  if(!srt.length)html='<tr><td class="empty" colspan="'+ncol+'">ไม่มีรายการ · กด “＋ เพิ่มรายการ” หรือ “นำเข้าข้อมูล”</td></tr>';
  else{var grp=(F.sort==='date'||F.sort==='date_desc'),curd=null;
   srt.forEach(function(r){
@@ -78,6 +78,19 @@ function saveSO(){var o={};for(var k in FLD){var e=g(FLD[k]);o[k]=e?e.value.trim
  save(all);closeSO();window.renderSO();if(typeof notify==='function')notify(editing?'บันทึกแล้ว':'เพิ่มรายการแล้ว');}
 function delSO(id){var all=load();var r=all.find(function(x){return x.soid===id;});if(!r)return;if(!window.confirm('ลบรายการ “'+(r.request||id)+'” ?'))return;save(all.filter(function(x){return x.soid!==id;}));window.renderSO();if(typeof notify==='function')notify('ลบแล้ว');}
 function dupSO(id){var all=load();var r=all.find(function(x){return x.soid===id;});if(!r)return;var c=JSON.parse(JSON.stringify(r));c.soid=newId();c.request=(r.request||'')+' (คัดลอก)';all.push(c);save(all);window.renderSO();if(typeof notify==='function')notify('ทำซ้ำแล้ว');}
+
+// ---------- Export current filtered view to .xlsx ----------
+function exportSO(){
+ if(typeof window.wtXlsxDownload!=='function'){if(typeof notify==='function')notify('ตัวช่วย Export ยังไม่พร้อม');return;}
+ var list=(window.__soShown&&window.__soShown.length!==undefined)?window.__soShown:[];
+ if(!list.length){if(typeof notify==='function')notify('ไม่มีรายการให้ส่งออก (ตามตัวกรองปัจจุบัน)');return;}
+ var H=['วันที่ดำเนินการ','เลขที่เอกสาร','ความต้องการ','วัตถุประสงค์','SKU','จำนวน','สาขา','วันที่ต้องการ','หน่วยงาน','สถานะ','หมายเหตุ'];
+ var out=[H];
+ list.forEach(function(r){out.push([r.actionDate||r.actionRaw||'',r.docNo||'',r.request||'',r.purpose||'',r.sku||'',r.qty||'',r.branches||'',r.requiredDate||'',r.dept||'',r.status||'',r.note||'']);});
+ var d=new Date(),pad=function(n){return (n<10?'0':'')+n;};
+ var fn='WorkTracker-SpecialOrder-'+d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'.xlsx';
+ if(window.wtXlsxDownload(out,fn,'Special Order')&&typeof notify==='function')notify('Export '+list.length+' รายการ (ตามตัวกรอง) เป็น .xlsx แล้ว');
+}
 
 // ---------- Import (Google Sheet mapping) ----------
 var SYS=[['actionDate','วันที่ดำเนินการ'],['docNo','เลขที่เอกสาร'],['request','ความต้องการ'],['purpose','วัตถุประสงค์'],['sku','SKU'],['qty','จำนวน'],['branches','จำนวนสาขา'],['requiredDate','วันที่ต้องการ'],['dept','หน่วยงานที่รับผิดชอบ'],['status','สถานะ'],['note','หมายเหตุ']];
@@ -128,6 +141,7 @@ function init(){
  on('soGran','change',function(e){F.gran=e.target.value;var d=g('soDate'),s=g('soStart'),en=g('soEnd'),dh=g('soDash');var isC=(F.gran==='custom'),isS=(F.gran!=='all'&&!isC),t=new Date().toISOString().slice(0,10);if(d)d.hidden=!isS;[s,en,dh].forEach(function(x){if(x)x.hidden=!isC;});if(isS&&d&&!d.value){d.value=t;F.date=t;}if(isC){if(s&&!s.value)s.value=t;if(en&&!en.value)en.value=t;F.start=s?s.value:'';F.end=en?en.value:'';}window.renderSO();});
  on('soDate','change',function(e){F.date=e.target.value;window.renderSO();});on('soStart','change',function(e){F.start=e.target.value;window.renderSO();});on('soEnd','change',function(e){F.end=e.target.value;window.renderSO();});
  on('soAdd','click',function(){openSO(null);});
+ on('soExport','click',exportSO);
  on('soSave','click',saveSO);on('soCancel','click',closeSO);on('soClose','click',closeSO);
  var mb=g('soModalbg');if(mb)mb.addEventListener('click',function(e){if(e.target.id==='soModalbg')closeSO();});
  on('soImport','click',openImp);on('soImpFetch','click',impFetch);on('soImpGo','click',impDo);on('soImpClose','click',closeImp);on('soImpCancel','click',closeImp);

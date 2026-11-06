@@ -48,7 +48,8 @@
     }
     return xml+'</sheetData></worksheet>';
   }
-  function buildXlsx(rows){
+  function buildXlsx(rows,sheetName){
+    var sn=String(sheetName==null?'Task Board':sheetName).replace(/[\\\/\?\*\[\]:]/g,' ').slice(0,31)||'Sheet1';
     var ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'+
       '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'+
@@ -60,7 +61,7 @@
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
     var wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'+
-      '<sheets><sheet name="Task Board" sheetId="1" r:id="rId1"/></sheets></workbook>';
+      '<sheets><sheet name="'+xesc(sn)+'" sheetId="1" r:id="rId1"/></sheets></workbook>';
     var wbr='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
       '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'+
       '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>';
@@ -124,6 +125,18 @@
       if(typeof notify==='function')notify('Export ไม่สำเร็จ: '+(e&&e.message||e));
     }
   }
+  // Reusable .xlsx downloader for other pages (Communication Plan, Special Order, ...).
+  // rows = array-of-arrays (first row = header); returns true on success.
+  window.wtXlsxDownload=function(rows,filename,sheetName){
+    try{
+      var bytes=buildXlsx(rows||[[]],sheetName);
+      var blob=new Blob([bytes],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      var url=URL.createObjectURL(blob);
+      var a=document.createElement('a');a.href=url;a.download=filename||'export.xlsx';document.body.appendChild(a);a.click();
+      setTimeout(function(){document.body.removeChild(a);URL.revokeObjectURL(url);},300);
+      return true;
+    }catch(e){if(typeof notify==='function')notify('Export ไม่สำเร็จ: '+(e&&e.message||e));return false;}
+  };
   document.addEventListener('click',function(e){
     if(!e.target.closest)return;
     if(e.target.closest('#wtExportXlsx')){e.preventDefault();download(allTasks(),'','ทั้งหมด');return;}
