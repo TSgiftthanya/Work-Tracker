@@ -2362,6 +2362,19 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   function emailKey(u){return String((u&&u.email)||'').trim().toLowerCase();}
   function nameKey(u){return String((u&&u.name)||'').trim().toLowerCase();}
 
+  // Default page policy per role. Unknown/blank roles -> allow all (never lock out by surprise).
+  function rolePreset(role){
+    var r=String(role||'').toLowerCase();
+    var all={board:1,commplan:1,specialorder:1,teamleave:1,projects:1,automation:1,deptstats:1,workload:1,library:1,masterdata:1};
+    var creator={board:1,commplan:1,specialorder:1,teamleave:1,projects:1,automation:0,deptstats:0,workload:0,library:0,masterdata:0};
+    var checker={board:1,commplan:1,specialorder:1,teamleave:1,projects:1,automation:1,deptstats:0,workload:1,library:0,masterdata:0};
+    var approver={board:1,commplan:1,specialorder:1,teamleave:1,projects:1,automation:1,deptstats:1,workload:1,library:0,masterdata:0};
+    if(/approver|อนุมัติ/.test(r))return approver;
+    if(/checker|ตรวจ|qa|quality|คุณภาพ/.test(r))return checker;
+    if(/creator|สร้าง|ครีเอ|designer|editor|คอนเทนต์|content/.test(r))return creator;
+    return all; // manager/admin bypass elsewhere; unrecognized roles stay open
+  }
+
   function accessMap(){try{return JSON.parse(localStorage.getItem(ACCESS_KEY)||'{}')||{};}catch(e){return {};}}
   function saveAccessMap(m){try{localStorage.setItem(ACCESS_KEY,JSON.stringify(m));}catch(e){}}
 
@@ -2444,16 +2457,26 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
           return '<td style="text-align:center"><input type="checkbox" class="wtAcc" data-email="'+esc(ek)+'" data-name="'+esc(u.name||'')+'" data-page="'+pid+'" '+(on?'checked':'')+(adm?' disabled':'')+'></td>';
         }).join('');
         var who='<div style="font-weight:500">'+esc(u.name||'—')+(adm?' <span class="pill" style="background:#eaf1fb;color:#1766cc">แอดมิน · เห็นทุกหน้า</span>':'')+'</div><div class="tiny" style="color:#9aa7b8">'+esc(u.email||'—')+(u.role?' · '+esc(u.role):'')+'</div>';
-        return '<tr data-row-email="'+esc(ek)+'"><td style="position:sticky;left:0;background:#fff;text-align:left">'+who+'</td>'+cells+'</tr>';
+        return '<tr data-row-email="'+esc(ek)+'" data-role="'+esc(u.role||'')+'"><td style="position:sticky;left:0;background:#fff;text-align:left">'+who+'</td>'+cells+'</tr>';
       }).join('');
       if(!users.length)rows='<tr><td colspan="'+(PAGES.length+1)+'" class="empty">ยังไม่มีข้อมูลผู้ใช้</td></tr>';
       document.getElementById('wtAccRows').innerHTML=
-        '<div style="display:flex;gap:8px;margin-bottom:8px"><button type="button" id="wtAccAll" class="ghost tiny">เปิดทุกหน้าทุกคน</button><button type="button" id="wtAccNone" class="ghost tiny">ซ่อนทุกหน้าทุกคน</button><button type="button" id="wtAccSave" class="primary tiny" style="margin-left:auto">บันทึกสิทธิ์</button></div>'+
+        '<div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap"><button type="button" id="wtAccPreset" class="primary tiny">ใช้ค่าเริ่มต้นตามบทบาท</button><button type="button" id="wtAccAll" class="ghost tiny">เปิดทุกหน้าทุกคน</button><button type="button" id="wtAccNone" class="ghost tiny">ซ่อนทุกหน้าทุกคน</button><button type="button" id="wtAccSave" class="primary tiny" style="margin-left:auto">บันทึกสิทธิ์</button></div>'+
+        '<div class="tiny" style="color:#9aa7b8;margin:-2px 0 8px">กด “ใช้ค่าเริ่มต้นตามบทบาท” เพื่อเติมค่าตามนโยบาย แล้วปรับรายคนได้ จากนั้นกด “บันทึกสิทธิ์”</div>'+
         '<div style="overflow:auto;border:1px solid #e3ebf4;border-radius:10px"><table class="table" style="margin:0"><thead><tr>'+th+'</tr></thead><tbody>'+rows+'</tbody></table></div>';
-      var allBtn=document.getElementById('wtAccAll'),noneBtn=document.getElementById('wtAccNone'),saveBtn=document.getElementById('wtAccSave');
+      var allBtn=document.getElementById('wtAccAll'),noneBtn=document.getElementById('wtAccNone'),saveBtn=document.getElementById('wtAccSave'),presetBtn=document.getElementById('wtAccPreset');
       function setAll(v){document.querySelectorAll('#wtAccRows input.wtAcc:not([disabled])').forEach(function(c){c.checked=v;});}
       if(allBtn)allBtn.onclick=function(){setAll(true);};
       if(noneBtn)noneBtn.onclick=function(){setAll(false);};
+      if(presetBtn)presetBtn.onclick=function(){
+        document.querySelectorAll('#wtAccRows tr[data-row-email]').forEach(function(tr){
+          var boxes=tr.querySelectorAll('input.wtAcc');
+          if(!boxes.length||boxes[0].disabled)return; // skip admin rows
+          var preset=rolePreset(tr.dataset.role||'');
+          boxes.forEach(function(c){c.checked=preset[c.dataset.page]!==false;});
+        });
+        if(window.notify)notify('เติมค่าเริ่มต้นตามบทบาทแล้ว · ตรวจแล้วกด “บันทึกสิทธิ์”');
+      };
       if(saveBtn)saveBtn.onclick=function(){
         var map=accessMap();
         // rebuild records for every non-admin user shown
