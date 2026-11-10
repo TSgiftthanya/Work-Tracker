@@ -1016,12 +1016,19 @@ function stepConnect(B){
 }
 function grid(){return [WZ.rawHeaders||[]].concat(WZ.rawRows||[]);}
 function detectHeader(){var G=grid();var hi=-1;for(var i=0;i<G.length;i++){if((G[i]||[]).some(function(c){var t=(c||'').trim();return t==='เรื่องสื่อสาร'||t==='เรื่อง';})){hi=i;break;}}WZ.hdrIdx=(hi<0?0:hi);applyHeader();}
+// Columns whose MAIN (group-row) header already names a scalar field (วัน, วันที่,
+// เวลาสื่อสาร, เรื่องสื่อสาร, สถานะ, หมายเหตุ, ...) must NOT be overridden by a stray
+// sub-header cell. This handles 2-row headers where e.g. a "LINE" label sits directly
+// under the "เวลาสื่อสาร" time column — the time header wins, and the real LINE channel
+// column (whose main cell is the group title "ช่องทางสื่อสาร") keeps its sub value.
+var SCALARKEYS=SYS.filter(function(f){return f[2]!=='bool';}).map(function(f){return f[0];});
+function isScalarHeader(h){h=(''+(h||'')).toLowerCase().trim();if(!h)return false;for(var i=0;i<SCALARKEYS.length;i++){var al=ALIAS[SCALARKEYS[i]]||[];for(var a=0;a<al.length;a++){var v=al[a];if(v&&(h===v||h.indexOf(v)>=0))return true;}}return false;}
 function applyHeader(){var G=grid();var hi=WZ.hdrIdx||0;var H=G[hi]||[];var sub=null,dataStart=hi+1;
  var titleJ=-1;for(var j=0;j<H.length;j++){var t=(H[j]||'').trim();if(t==='เรื่องสื่อสาร'||t==='เรื่อง'){titleJ=j;break;}}
  if(hi+1<G.length){var nxt=G[hi+1]||[];var te=(titleJ<0)||!((nxt[titleJ]||'').trim());
   var looksSub=nxt.some(function(c){var u=(c||'').trim().toUpperCase();return u&&['LINE','SMS','BANNER','TOP HIT','TOPHIT','APP STAFF','APPSTAFF','LASTMILE','INFOGRAPHIC','INFO','VDO','บันทึก'].some(function(k){return u.indexOf(k)>=0;});});
   if(te&&looksSub){sub=nxt;dataStart=hi+2;}}
- WZ.headers=H.map(function(c,j){var s=(sub&&sub[j])?(''+sub[j]).trim():'';return s||(''+(c||'')).trim();});
+ WZ.headers=H.map(function(c,j){var main=(''+(c||'')).trim();var s=(sub&&sub[j])?(''+sub[j]).trim():'';if(main&&isScalarHeader(main))return main;return s||main;});
  WZ.rows=G.slice(dataStart).filter(function(r){return (r||[]).some(function(c){return (c||'').trim();});});
  WZ.total=WZ.rows.length;}
 function autoMap(){WZ.map={};var used={};
