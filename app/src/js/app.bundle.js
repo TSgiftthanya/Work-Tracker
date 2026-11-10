@@ -1064,8 +1064,17 @@ function validate(o,existKeys,batchSeen){var errs=[],level='valid';
  if(hasErr)level='error';else if(isDup){level='duplicate';errs.push({c:'ซ้ำ',m:'มีข้อมูลเดิม (วันที่+เรื่อง+เวลา)',e:false});}
  else if(errs.length)level='warning';
  return {level:level,errs:errs};}
+// A row is "empty" (a blank planning/template row) when it has NO topic and NO real
+// content — no channel, no media, no time/sms/owner, no remark. Such rows (e.g. future
+// dates pre-filled with just a date + default status) are skipped silently, not errored.
+function isEmptyRow(o){
+ if((o.topic||'').trim())return false;
+ if(o.ch&&(o.ch.line||o.ch.tophit||o.ch.banner||o.ch.sms||o.ch.appstaff||o.ch.lastmile))return false;
+ if(o.md&&(o.md.memo||o.md.info||o.md.vdo))return false;
+ if((o.time||'').trim()||(o.sms_msg||'').trim()||(o.sms_target||'').trim()||(o.owner||'').trim()||(o.remark||'').trim())return false;
+ return true;}
 function fillCols(){var cols=[];['communication_date','day','publish','date_start','date_done','project'].forEach(function(k){if(WZ.map[k]!=null&&WZ.map[k]>=0)cols.push(WZ.map[k]);});cols.forEach(function(j){var last='';WZ.rows.forEach(function(r){var v=(r[j]||'').trim();if(v)last=v;else if(last)r[j]=last;});});}function buildParsed(){fillCols();var existKeys={};(window.CPall?window.CPall():[]).forEach(function(r){existKeys[dupKey({date:r.date||'',day:r.day||'',topic:r.topic,time:r.time})]=1;});
- var batchSeen={};WZ.parsed=WZ.rows.map(function(r){var o=parseRow(r);var v=validate(o,existKeys,batchSeen);var k=dupKey({date:o.date||'',day:o.day||'',topic:o.topic,time:o.time});if(o.topic)batchSeen[k]=1;return {o:o,level:v.level,errs:v.errs,sel:(v.level!=='error'),skip:false};});}
+ var batchSeen={};WZ.parsed=[];WZ.skippedEmpty=0;WZ.rows.forEach(function(r){var o=parseRow(r);if(isEmptyRow(o)){WZ.skippedEmpty++;return;}var v=validate(o,existKeys,batchSeen);var k=dupKey({date:o.date||'',day:o.day||'',topic:o.topic,time:o.time});if(o.topic)batchSeen[k]=1;WZ.parsed.push({o:o,level:v.level,errs:v.errs,sel:(v.level!=='error'),skip:false});});}
 function revalidate(p){var existKeys={};(window.CPall?window.CPall():[]).forEach(function(r){existKeys[dupKey({date:r.date||'',day:r.day||'',topic:r.topic,time:r.time})]=1;});var v=validate(p.o,existKeys,{});p.level=v.level;p.errs=v.errs;}
 function counts(){var c={total:WZ.parsed.length,valid:0,warning:0,error:0,duplicate:0};WZ.parsed.forEach(function(p){c[p.level]++;});return c;}
 
@@ -1076,6 +1085,7 @@ function stepValidate(B){var c=counts();
   +'<div class="cp-chip" style="border-color:#f3dca6"><b style="color:#9a6b16">'+c.warning+'</b><span>เตือน ⚠</span></div>'
   +'<div class="cp-chip" style="border-color:#f0b4ab"><b style="color:#c0392b">'+c.error+'</b><span>ผิดพลาด ✕</span></div>'
   +'<div class="cp-chip" style="border-color:#c9d6ea"><b style="color:#3a6ea5">'+c.duplicate+'</b><span>ซ้ำ ⟳</span></div></div>'
+  +(WZ.skippedEmpty?'<div class="tiny muted" style="margin-bottom:4px">• ข้ามแถวว่าง '+WZ.skippedEmpty+' แถว (มีแต่วัน/วันที่ ยังไม่มีเรื่องสื่อสาร · เช่น แถวแพลนล่วงหน้า)</div>':'')
   +'<div class="tiny muted">• แถวที่ผิดพลาด (✕) จะไม่ถูกนำเข้า · แถวเตือน (⚠) นำเข้าได้ · แถวซ้ำ (⟳) จัดการได้ในขั้นยืนยัน<br>• กด “ถัดไป” เพื่อดูพรีวิวและแก้ไขข้อมูลก่อนนำเข้า</div>';
 }
 

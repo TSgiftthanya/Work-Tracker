@@ -400,7 +400,13 @@ def channel_labels(rows):
     return labs
 
 def raw_tab_ok(rows, mode):
-    txt=' '.join(' '.join((c or '') for c in r) for r in rows[:10])
+    # Scan the top rows (header may sit several metadata rows down).
+    txt=' '.join(' '.join((c or '') for c in r) for r in rows[:20])
+    # A gviz tab-name miss falls back to the sheet's first tab, which may be an
+    # instructions/notes tab that coincidentally contains words like "หน่วยงาน".
+    # Require the real Communication-Plan header so such tabs are rejected and we
+    # fall through to the direct CSV export of the linked tab.
+    if 'เรื่องสื่อสาร' not in txt: return False
     if mode=='internal': return ('หน่วยงาน' in txt or 'หัวข้อ' in txt or 'จำนวน' in txt)
     return ('ชื่อโครงการ' in txt or 'แคมเปญ' in txt or 'วันเผยแพร่' in txt or 'วันดำเนินการ' in txt)
 
