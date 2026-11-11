@@ -1,6 +1,6 @@
 (function(){
 var DDKEY='worktracker-dropdowns-v1';
-var DEF={priority:['Normal','High','Urgent'],people:(typeof people!=='undefined'?people.slice():['Gift','Mint','Beam','Ploy','Nok']),supporting:(typeof people!=='undefined'?people.slice():['Gift','Mint','Beam','Ploy','Nok']),channels:['LINE','TOP HIT','Banner','SMS','APP STAFF','Lastmile'],detail_note:['สื่อสารทั่วไป','BlankForm'],detail_info:['มีPattern(บันทึก)','New Design','กระบวนการละเอียด'],detail_vdo:['Short Clip','Long Clip','ข้อมูลซับซ้อน','Editing']};
+var DEF={priority:['Normal','High','Urgent'],people:(typeof people!=='undefined'?people.slice():['Gift','Mint','Beam','Ploy','Nok']),supporting:(typeof people!=='undefined'?people.slice():['Gift','Mint','Beam','Ploy','Nok']),channels:['LINE','TOP HIT','Banner','SMS','APP STAFF','Lastmile'],detail_note:['สื่อสารทั่วไป','BlankForm'],detail_info:['มีPattern(บันทึก)','New Design','กระบวนการละเอียด'],detail_vdo:['Short Clip','Long Clip','ข้อมูลซับซ้อน','Editing'],int_topic:[],int_dept:[]};
 function load(){try{var s=JSON.parse(localStorage.getItem(DDKEY)||'null');return (s&&typeof s==='object')?s:null;}catch(e){return null;}}
 function save(s){try{localStorage.setItem(DDKEY,JSON.stringify(s));}catch(e){}}
 function all(){var s=load(),seeded=false;if(!s){s={};seeded=true;}Object.keys(DEF).forEach(function(k){if(!Array.isArray(s[k])){s[k]=DEF[k].slice();seeded=true;}});if(!Array.isArray(s.__topics)){s.__topics=[];seeded=true;}(s.__topics||[]).slice().forEach(function(tp){if(tp&&(tp.title||'').toLowerCase().indexOf('supporting')>=0){var o=Array.isArray(s[tp.key])?s[tp.key]:[];if(!Array.isArray(s.supporting))s.supporting=[];o.forEach(function(v){if(s.supporting.indexOf(v)<0)s.supporting.push(v);});delete s[tp.key];s.__topics=s.__topics.filter(function(x){return x.key!==tp.key;});seeded=true;}});if(seeded)save(s);return s;}
@@ -14,12 +14,16 @@ function useCount(key,val){var m=mediaOf(key),n=0;T().forEach(function(t){
  if(key==='priority'){if(t.priority===val)n++;}
  else if(key==='people'){var hit=(t.lead===val||t.checker===val||t.approver===val||(t.commOwner&&t.commOwner.indexOf?t.commOwner.indexOf(val)>=0:t.commOwner===val));if(!hit&&t.support)hit=t.support.split(',').map(function(x){return x.trim();}).indexOf(val)>=0;if(!hit&&t.types)hit=t.types.some(function(x){return x&&x.owner===val;});if(hit)n++;}
  else if(key==='channels'){if(t.channels&&t.channels.indexOf(val)>=0)n++;}
+ else if(key==='int_topic'){if(t.intTopic===val)n++;}
+ else if(key==='int_dept'){if(t.intDept===val)n++;}
  else if(m){if(t.types&&t.types.some(function(x){return x&&x.type===m&&(x.detail||'')===val;}))n++;}});return n;}
 function renameVal(key,old,nw){var s=all(),arr=s[key]||[],i=arr.indexOf(old);if(i<0)return;arr[i]=nw;save(s);sync();var m=mediaOf(key);
  T().forEach(function(t){
   if(key==='priority'){if(t.priority===old)t.priority=nw;}
   else if(key==='people'){if(t.lead===old)t.lead=nw;if(t.checker===old)t.checker=nw;if(t.approver===old)t.approver=nw;if(t.commOwner){if(t.commOwner.map)t.commOwner=t.commOwner.map(function(x){return x===old?nw:x;});else if(t.commOwner===old)t.commOwner=nw;}if(t.support)t.support=t.support.split(',').map(function(x){return x.trim();}).map(function(x){return x===old?nw:x;}).filter(Boolean).join(', ');if(t.types)t.types.forEach(function(x){if(x&&x.owner===old)x.owner=nw;});}
   else if(key==='channels'){if(t.channels)t.channels=t.channels.map(function(x){return x===old?nw:x;});}
+  else if(key==='int_topic'){if(t.intTopic===old)t.intTopic=nw;}
+  else if(key==='int_dept'){if(t.intDept===old)t.intDept=nw;}
   else if(m){if(t.types)t.types.forEach(function(x){if(x&&x.type===m&&(x.detail||'')===old)x.detail=nw;});}});
  if(typeof persist==='function')persist();}
 function addVal(key,val){val=(val||'').trim();if(!val)return{ok:false,msg:'กรุณาระบุค่า'};var s=all(),arr=s[key]||(s[key]=[]);if(arr.some(function(x){return String(x).toLowerCase()===val.toLowerCase();}))return{ok:false,msg:'มีตัวเลือกนี้อยู่แล้ว'};arr.push(val);save(s);sync();return{ok:true};}
@@ -55,7 +59,9 @@ window.renderMD=function(){var host=document.getElementById('mdCards');if(!host)
   {key:'detail_note',title:'รายละเอียด · บันทึก',desc:'ตัวเลือก “รายละเอียด” เมื่อเลือกประเภทสื่อ บันทึก'},
   {key:'detail_info',title:'รายละเอียด · Infographic',desc:'ตัวเลือก “รายละเอียด” เมื่อเลือกประเภทสื่อ Infographic'},
   {key:'detail_vdo',title:'รายละเอียด · VDO',desc:'ตัวเลือก “รายละเอียด” เมื่อเลือกประเภทสื่อ VDO'},{key:'supporting',title:'Supporting Creator',desc:'ช่อง Supporting Creator ในการ์ดงาน (เลือกได้หลายคน)'},
-  {key:'channels',title:'ช่องทางการสื่อสาร',desc:'ช่องทางเผยแพร่ในการ์ดงาน (เลือกได้หลายช่อง) · แสดงบนการ์ด Task Board'}];
+  {key:'channels',title:'ช่องทางการสื่อสาร',desc:'ช่องทางเผยแพร่ในการ์ดงาน (เลือกได้หลายช่อง) · แสดงบนการ์ด Task Board'},
+  {key:'int_topic',title:'หัวข้อ (เฉพาะ Internal)',desc:'ช่อง “หัวข้อ” ในการ์ดงาน · แสดงเมื่อ ประเภทการสื่อสาร = Internal'},
+  {key:'int_dept',title:'หน่วยงาน (เฉพาะ Internal)',desc:'ช่อง “หน่วยงาน” ในการ์ดงาน · แสดงเมื่อ ประเภทการสื่อสาร = Internal'}];
  (s.__topics||[]).forEach(function(tp){edit.push({key:tp.key,title:tp.title,desc:'หัวข้อกำหนดเอง · ยังไม่ผูกกับฟิลด์ในการ์ดงาน',custom:true});});
  var locked=[{title:'ประเภทการสื่อสาร',opts:['Internal','External'],note:'ผูกกับ routing · แยกโปรเจกต์ · ฟิลเตอร์'},
   {title:'ประเภทสื่อ (ประเภทงาน)',opts:['บันทึก','Infographic','VDO'],note:'ผูกกับ Matrix · kind · หัวข้อรายละเอียดสื่อ'},
